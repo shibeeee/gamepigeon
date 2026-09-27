@@ -100,6 +100,10 @@
       this.recorded = this.recorded && this.idx > 0;
       this.animate = { move, from: s };
       this.review = null;
+      // In bot mode, make sure the move the bot made for you gets noticed.
+      if (byAI && this.mode === 'helper' && s.turn === this.me) {
+        GP.toast('Bot played ' + this.cfg.moveLabel(move, s) + '. Make this move in GamePigeon.', 'good');
+      }
       if (this.cfg.onPlayed) this.cfg.onPlayed(this, move, s, next);
       else GP.sound.play('place');
       GP.buzz(8);
