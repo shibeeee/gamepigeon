@@ -1,7 +1,8 @@
 /*
  * Checkers (American rules, 8x8).
  *
- * Board: 64 cells, row 0 at the top. Only dark squares ((r + c) odd) are used.
+ * Board: 64 cells, row 0 at the top. Only dark squares are used; like
+ * GamePigeon, the top-left corner is dark ((r + c) even).
  * Pieces: -1 empty, 0/1 = men of player 0/1, 2/3 = kings of player 0/1
  * (owner = v & 1). Player 0 starts at the bottom and moves up.
  *
@@ -17,6 +18,7 @@
   const N = 64, NO_PROGRESS_LIMIT = 80; // plies without a capture or man move = draw
   const Z = GP.zobrist(N * 4 + 1, 1234);
 
+  const playable = (i) => (((i >> 3) + (i & 7)) & 1) === 0;
   const owner = (v) => (v < 0 ? -1 : v & 1);
   const isKing = (v) => v >= 2;
   const rc = (i) => [i >> 3, i & 7];
@@ -156,7 +158,7 @@
   function initialBoard() {
     const b = new Array(N).fill(-1);
     for (let r = 0; r < 8; r++) for (let c = 0; c < 8; c++) {
-      if ((r + c) % 2 === 0) continue;
+      if (!playable(r * 8 + c)) continue;
       if (r < 3) b[r * 8 + c] = 1;
       else if (r > 4) b[r * 8 + c] = 0;
     }
@@ -165,6 +167,7 @@
 
   GP.defineEngine('checkers', A, {
     decode,
+    playable,
     owner,
     isKing,
     initial: (opts) => ({ b: initialBoard(), turn: opts && opts.first ? 1 : 0, forced: !opts || opts.forced !== 'off', quiet: 0, last: null }),

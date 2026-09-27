@@ -49,6 +49,12 @@
         this.options = Object.assign(this.defaultOptions(), saved.options);
         this.autoHint = true; // the best move always shows now
         this.idx = Math.min(this.idx, this.history.length - 1);
+        // Games can convert positions saved by an older version of the app.
+        if (this.cfg.migrate && this.history.some((s) => this.cfg.migrate(s) !== s)) {
+          this.history = this.history.map((s) => this.cfg.migrate(s));
+          this.moves = this.moves.map((m, i) => (i > 0 && m !== 'edit' ? 'edit' : m)); // old move names no longer match
+          this.review = null;
+        }
       } else {
         this.autoHint = true;
         this.me = 0;

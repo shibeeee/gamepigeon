@@ -121,9 +121,9 @@
   };
   ART.checkers = () => {
     let s = '<rect x="40" y="10" width="80" height="80" rx="6" fill="#f3e0c4"/>';
-    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if ((r + c) % 2 === 1) s += `<rect x="${40 + c * 20}" y="${10 + r * 20}" width="20" height="20" fill="#6d4c41"/>`;
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if ((r + c) % 2 === 0) s += `<rect x="${40 + c * 20}" y="${10 + r * 20}" width="20" height="20" fill="#6d4c41"/>`;
     const piece = (x, y, red, king) => `<circle cx="${x}" cy="${y}" r="7.5" fill="${red ? '#e53935' : '#26262b'}" stroke="rgba(0,0,0,.35)"/><circle cx="${x}" cy="${y}" r="4.5" fill="none" stroke="rgba(255,255,255,.35)"/>` + (king ? `<path d="M${x - 4} ${y + 1}l1.5-4 2.5 2.5 2.5-2.5 1.5 4z" fill="#ffd54f"/>` : '');
-    s += piece(70, 40, true) + piece(90, 20, false, true) + piece(50, 80, true) + piece(110, 60, false) + piece(90, 60, true, true);
+    s += piece(70, 40, true) + piece(90, 20, false, true) + piece(50, 60, true) + piece(110, 80, false) + piece(90, 60, true, true);
     return s;
   };
   ART.dots = () => {

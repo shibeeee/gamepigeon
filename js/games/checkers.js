@@ -35,7 +35,7 @@
     const board = h('div', { class: 'ck' + (flip ? ' flipped' : '') });
     for (let rr = 0; rr < 8; rr++) for (let cc = 0; cc < 8; cc++) {
       const r = flip ? 7 - rr : rr, c = flip ? 7 - cc : cc, i = r * 8 + c;
-      const dark = (r + c) % 2 === 1;
+      const dark = E.playable(i);
       const cls = ['ck-sq', dark ? 'dark' : 'light'];
       if (last.includes(i)) cls.push('last');
       if (hintPath.includes(i)) cls.push('hint');
@@ -114,12 +114,18 @@
       { value: -1, label: 'Erase' },
     ],
     edit(s, i, tool) {
-      if (((i >> 3) + (i & 7)) % 2 === 0) return null;
+      if (!E.playable(i)) return null;
       const b = s.b.slice();
       b[i] = b[i] === tool ? -1 : tool;
       return Object.assign({}, s, { b, last: null, quiet: 0 });
     },
     clearBoard: (fresh) => Object.assign({}, fresh, { b: new Array(64).fill(-1) }),
+    // Older versions used the mirror-image board; flip those positions left to right.
+    migrate(s) {
+      if (s.b.every((v, i) => v < 0 || E.playable(i))) return s;
+      const b = s.b.map((_, i) => s.b[(i & ~7) + (7 - (i & 7))]);
+      return Object.assign({}, s, { b, last: null });
+    },
   };
 
   GP.registerGame({

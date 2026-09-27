@@ -170,19 +170,21 @@ test('finds a forced win by fours', () => {
 console.log('Checkers');
 const CK = GP.engines.checkers;
 test('seven opening moves', () => eq(CK.legal(CK.initial({})).length, 7));
+test('top-left corner is a playable square with a piece', () => { const s = CK.initial({}); ok(CK.playable(0) && s.b[0] === 1 && s.b[1] === -1); });
+test('every piece starts on a playable square', () => { const s = CK.initial({}); ok(s.b.every((v, i) => v < 0 || CK.playable(i))); eq(s.b.filter((v) => v >= 0).length, 24); });
 test('jumps are forced', () => {
-  const b = new Array(64).fill(-1); b[42] = 0; b[35] = 1; b[0 * 8 + 7] = 1; b[63 - 7] = 0;
+  const b = new Array(64).fill(-1); b[41] = 0; b[34] = 1; b[6] = 1; b[63] = 0;
   const ms = CK.legal({ b, turn: 0, forced: true });
   ok(ms.length && ms.every((m) => m.includes('x')), JSON.stringify(ms));
 });
 test('multi-jump in one move', () => {
-  const b = new Array(64).fill(-1); b[56] = 0; b[49] = 1; b[35] = 1; b[7] = 1;
-  eq(CK.legal({ b, turn: 0, forced: true }), ['56x42x28']);
+  const b = new Array(64).fill(-1); b[57] = 0; b[50] = 1; b[36] = 1; b[6] = 1;
+  eq(CK.legal({ b, turn: 0, forced: true }), ['57x43x29']);
 });
-test('crowning', () => { const b = new Array(64).fill(-1); b[9] = 0; b[62] = 1; const s = CK.apply({ b, turn: 0, forced: true }, '9-0'); eq(s.b[0], 2); });
+test('crowning', () => { const b = new Array(64).fill(-1); b[9] = 0; b[63] = 1; const s = CK.apply({ b, turn: 0, forced: true }, '9-0'); eq(s.b[0], 2); });
 test('takes a free piece', () => {
-  const b = new Array(64).fill(-1); b[42] = 0; b[35] = 1; b[7] = 1; b[61] = 0;
-  eq(CK.search({ b, turn: 0, forced: false }, fast).move, '42x28');
+  const b = new Array(64).fill(-1); b[41] = 0; b[34] = 1; b[6] = 1; b[63] = 0;
+  eq(CK.search({ b, turn: 0, forced: false }, fast).move, '41x27');
 });
 
 console.log('Dots and Boxes');
