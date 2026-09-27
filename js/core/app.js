@@ -30,11 +30,44 @@
     return null;
   }
 
+  function ago(t) {
+    const m = Math.round((Date.now() - t) / 60000);
+    if (m < 1) return 'just now';
+    if (m < 60) return m + 'm ago';
+    if (m < 60 * 24) return Math.round(m / 60) + 'h ago';
+    return Math.round(m / 1440) + 'd ago';
+  }
+
+  const standalone = () => matchMedia('(display-mode: standalone)').matches || navigator.standalone === true;
+  const isiOS = () => /iPhone|iPad|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+  /* A one-time tip on how to put the app on the home screen. */
+  function installTip() {
+    if (standalone() || GP.store.get('tipInstallDismissed')) return null;
+    const tip = h('div', { class: 'tip' },
+      h('div', { class: 'tip-icon', html: LOGO }),
+      h('div', { class: 'tip-text' },
+        h('b', null, 'Put Pigeon Pal on your home screen'),
+        h('small', null, isiOS()
+          ? 'In Safari, tap the Share button, then "Add to Home Screen". It opens full screen and works offline.'
+          : 'Use your browser menu and choose "Install" or "Add to Home screen". It then works offline.')),
+      GP.button('', { icon: 'close', kind: 'ghost', title: 'Dismiss', onclick: () => { GP.store.set('tipInstallDismissed', true); tip.remove(); } }));
+    return tip;
+  }
+
+  function share() {
+    const url = location.href.split('#')[0];
+    const data = { title: 'Pigeon Pal', text: 'Solvers and a practice AI for GamePigeon games', url };
+    if (navigator.share) navigator.share(data).catch(() => {});
+    else if (navigator.clipboard) navigator.clipboard.writeText(url).then(() => GP.toast('Link copied', 'good'));
+  }
+
   function showHome() {
     document.title = 'Pigeon Pal';
     const prefs = GP.store.get('home', { filter: 'all', favs: [] });
     const favs = new Set(prefs.favs);
     const stats = GP.store.get('stats', {});
+    const recent = GP.store.get('recent', {});
     const grid = h('div', { class: 'cards' });
     const search = h('input', { class: 'search', type: 'search', placeholder: 'Search games', 'aria-label': 'Search games' });
 
@@ -48,6 +81,7 @@
       list.forEach((g, i) => {
         const st = stats[g.id];
         const prog = progressOf(g);
+        const seen = recent[g.id];
         const star = h('button', {
           type: 'button', class: 'fav' + (favs.has(g.id) ? ' on' : ''), title: favs.has(g.id) ? 'Unfavorite' : 'Favorite',
           'aria-label': 'Favorite ' + g.name,
@@ -69,6 +103,7 @@
             h('div', { class: 'badges' },
               h('span', { class: 'badge kind' }, g.category === 'word' ? 'Word' : 'Board'),
               prog ? h('span', { class: 'badge prog' }, prog) : null,
+              seen ? h('span', { class: 'badge' }, ago(seen)) : null,
               st ? h('span', { class: 'badge rec', title: 'Your record against the computer' }, st.w + 'W ' + st.l + 'L' + (st.d ? ' ' + st.d + 'D' : '')) : null)),
           star));
       });
@@ -76,18 +111,21 @@
     }
 
     search.addEventListener('input', draw);
-    const inProgress = GP.gameList.filter((g) => progressOf(g) === 'In progress');
+    const inProgress = GP.gameList.filter((g) => progressOf(g) === 'In progress')
+      .sort((a, b) => (recent[b.id] || 0) - (recent[a.id] || 0));
     app.appendChild(h('div', { class: 'home' },
       h('header', { class: 'hero' },
         h('div', { class: 'hero-top' },
           h('div', { class: 'logo', html: LOGO }),
           h('div', { class: 'hero-actions' },
+            GP.button('', { icon: 'share', kind: 'ghost', title: 'Share Pigeon Pal', onclick: share }),
             themeButton(),
             GP.button('', { icon: 'gear', kind: 'ghost', title: 'Settings', onclick: openSettings }))),
         h('h1', null, 'Pigeon Pal'),
         h('p', { class: 'lead' }, 'Your coach for GamePigeon games. Enter what you see, get the best move, and practice against a smart AI.'),
         inProgress.length ? h('a', { class: 'resume', href: '#/play/' + inProgress[0].id },
           GP.icon('play'), 'Continue ' + inProgress[0].name, inProgress.length > 1 ? h('small', null, ' +' + (inProgress.length - 1) + ' more') : null) : null),
+      installTip(),
       h('div', { class: 'home-tools' },
         h('div', { class: 'search-wrap' }, GP.icon('search'), search),
         GP.segmented([
@@ -114,6 +152,9 @@
   /* ---------- game page ---------- */
   function showGame(g) {
     document.title = g.name + ' · Pigeon Pal';
+    const recent = GP.store.get('recent', {});
+    recent[g.id] = Date.now();
+    GP.store.set('recent', recent);
     const body = h('main', { class: 'game-body' });
     app.appendChild(h('div', { class: 'game-page', style: { '--c': g.color } },
       h('header', { class: 'topbar' },
@@ -168,6 +209,11 @@
       h('div', { class: 'field' }, h('label', null, 'Default strength for new games'),
         GP.segmented([{ value: 'easy', label: 'Easy' }, { value: 'normal', label: 'Normal' }, { value: 'hard', label: 'Hard' }, { value: 'max', label: 'Max' }],
           S.strength, (v) => GP.setSetting('strength', v))),
+      h('h4', null, 'Word games'),
+      h('div', { class: 'field' }, h('label', null, 'Round timer length'),
+        GP.segmented([60, 80, 90, 120].map((n) => ({ value: n, label: n + 's' })), GP.store.get('roundLen', 80), (v) => GP.store.set('roundLen', v))),
+      h('h4', null, 'Your records'),
+      recordsTable(),
       h('h4', null, 'Your data'),
       h('p', { class: 'hint-text' }, 'Games, settings and records are saved in this browser. Back them up to move to another device.'),
       h('div', { class: 'btn-row' },
@@ -179,6 +225,22 @@
         }) })),
       fileInput),
     [{ label: 'Done', kind: 'primary', onclick: () => { if (!current) route(); } }]);
+  }
+
+  function recordsTable() {
+    const stats = GP.store.get('stats', {});
+    const rows = GP.gameList.filter((g) => stats[g.id]);
+    if (!rows.length) return h('p', { class: 'hint-text' }, 'Play against the computer to start a record.');
+    const box = h('div', null,
+      h('table', { class: 'records' },
+        h('tr', null, h('th', null, 'Game'), h('th', null, 'Won'), h('th', null, 'Lost'), h('th', null, 'Draw')),
+        rows.map((g) => h('tr', null, h('td', null, g.name), h('td', null, stats[g.id].w), h('td', null, stats[g.id].l), h('td', null, stats[g.id].d)))),
+      GP.button('Reset records', { kind: 'ghost', icon: 'refresh', class: 'btn-sm', onclick: () => {
+        GP.store.set('stats', {});
+        box.replaceWith(recordsTable());
+        GP.toast('Records reset', null, { label: 'Undo', onclick: () => GP.store.set('stats', stats) });
+      } }));
+    return box;
   }
 
   function exportData() {
@@ -221,4 +283,8 @@
   }
 
   route();
+
+  // Fetch the dictionary in the background so word games open instantly.
+  const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));
+  setTimeout(() => idle(() => GP.loadWords().catch(() => {})), 1200);
 })();

@@ -22,6 +22,7 @@
       GP.store.get('wordhunt', {}));
     const save = () => GP.store.set('wordhunt', st);
     let results = [];
+    let query = '';
     let selected = null;
     let focusIdx = 0;
     const ticked = []; // words ticked off in one-at-a-time view, so Back can undo them
@@ -43,13 +44,13 @@
 
     root.appendChild(h('div', { class: 'game-layout word' },
       h('section', { class: 'play-area' },
-        h('div', { class: 'toolbar' }, layoutSeg),
+        h('div', { class: 'toolbar' }, layoutSeg, GP.roundTimer('wordhunt')),
         h('div', { class: 'wh-stage' }, boardHost, overlay),
+        focusHost,
         h('div', { class: 'btn-row' },
           GP.button('Type letters', { icon: 'paste', onclick: () => GP.pasteDialog(LAYOUTS[st.layout].count, (t) => tiles.fill(t, 0)) }),
           GP.button('Random', { icon: 'shuffle', onclick: randomize, title: 'Fill with random letters to practice' }),
-          GP.button('Clear', { icon: 'trash', kind: 'ghost', onclick: clearBoard })),
-        focusHost),
+          GP.button('Clear', { icon: 'trash', kind: 'ghost', onclick: clearBoard }))),
       h('aside', { class: 'panel' }, side)));
 
     function letters() {
@@ -90,6 +91,7 @@
         drawPath();
         return;
       }
+      if (!GP.words.ready()) { GP.clear(side); side.appendChild(GP.loadingCard()); }
       GP.loadWords().then(() => {
         const cells = vals.map((ch, i) => ((L.maskArr && !L.maskArr[i]) ? null : ch));
         results = GP.words.wordHunt(cells, L.cols, st.maxLen);
@@ -111,6 +113,8 @@
       selected = item;
       GP.sound.play('pop');
       drawPath();
+      renderFocus();
+      GP.showOnPhone(GP.$('.wh-stage', root));
     }
 
     function renderSide(filledCount) {
@@ -137,6 +141,7 @@
         side.appendChild(h('div', { class: 'card grow' }, GP.wordResults({
           items: results, used, selected: selected && selected.word,
           onSelect: select, onToggleUsed: toggleUsed,
+          query, onQuery: (q) => (query = q),
           emptyText: 'No words found on this board.',
         })));
       }
@@ -145,6 +150,14 @@
 
     function renderFocus() {
       GP.clear(focusHost);
+      if (st.view === 'list' && selected && results.includes(selected)) {
+        const w = selected.word;
+        focusHost.appendChild(h('div', { class: 'card focus-card compact' },
+          h('div', { class: 'focus-word' }, w.toUpperCase()),
+          h('div', { class: 'focus-meta' }, GP.fmt(selected.score) + ' points · start on the green tile'),
+          h('div', { class: 'btn-row' }, GP.button(used.has(w) ? 'Untick' : 'Tick off', { icon: 'check', kind: 'primary', onclick: () => toggleUsed(w) }))));
+        return;
+      }
       if (st.view !== 'focus' || !results.length) return;
       const queue = results.filter((x) => !used.has(x.word) || x === selected);
       if (!queue.length) {
@@ -209,6 +222,8 @@
     }
 
     function clearBoard() {
+      const before = (st.letters[st.layout] || []).slice();
+      if (before.some(Boolean)) GP.toast('Board cleared', null, { label: 'Undo', onclick: () => { st.letters[st.layout] = before; save(); buildBoard(); solve(); } });
       st.letters[st.layout] = [];
       selected = null;
       save();

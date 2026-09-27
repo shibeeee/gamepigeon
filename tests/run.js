@@ -87,6 +87,12 @@ test('game ends and sweeps', () => {
   const s = M.apply({ pits, turn: 0, mode: 'capture' }, 5);
   const r = M.result(s); ok(r); eq(r.final[6], 11); eq(r.final[13], 11);
 });
+test('outcome describes a move', () => {
+  const o = M.outcome(M.initial({}), 2);
+  ok(o.extra); eq(o.banked, 1);
+  const cap = M.outcome({ pits: [0, 0, 0, 0, 1, 0, 0, 4, 4, 4, 4, 4, 4, 0], turn: 0, mode: 'capture' }, 4);
+  ok(cap.captured && !cap.extra); eq(cap.banked, 5);
+});
 test('search prefers the extra turn', () => eq(M.search(M.initial({}), fast).move, 2));
 
 console.log('Words');

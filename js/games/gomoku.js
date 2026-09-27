@@ -71,6 +71,7 @@
       choices: [{ value: 11, label: '11' }, { value: 13, label: '13' }, { value: 15, label: '15' }, { value: 19, label: '19' }],
     }],
     render,
+    explain: GP.explainPlacement,
     editTools: [
       { value: 0, label: 'Black', swatch: '#1b1b1f' },
       { value: 1, label: 'White', swatch: '#f4f4f4' },

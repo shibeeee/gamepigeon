@@ -67,6 +67,7 @@
     evalScale: 150,
     evalUnit: 50,
     render,
+    explain: GP.explainPlacement,
     onPlayed: () => {},
     editTools: [
       { value: 0, label: 'Red', swatch: '#f0463c' },

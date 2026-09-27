@@ -48,6 +48,8 @@
     const save = () => GP.store.set('wordbites', st);
     let used = new Set(st.used);
     let results = [];
+    let query = '';
+    let current = null; // word shown in the diagram card
     const side = h('div', { class: 'wh-side' });
     const piecesPreview = h('div', { class: 'wb-pieces' });
     const show = h('div', { class: 'wb-show' });
@@ -67,6 +69,7 @@
 
     root.appendChild(h('div', { class: 'game-layout word' },
       h('section', { class: 'play-area' },
+        h('div', { class: 'toolbar' }, GP.roundTimer('wordbites')),
         h('div', { class: 'card' },
           h('h3', null, 'Your pieces'),
           field('singles', 'Single letters', 'A E R T', 'One tile each'),
@@ -74,10 +77,15 @@
           field('vert', 'Down pairs', 'ER ST', 'Top letter first'),
           piecesPreview,
           h('div', { class: 'btn-row' }, GP.button('Clear', { icon: 'trash', kind: 'ghost', onclick: () => {
-            st.singles = st.horiz = st.vert = '';
-            save();
-            GP.$$('.wb-field input', root).forEach((i) => (i.value = ''));
-            solve();
+            const before = { singles: st.singles, horiz: st.horiz, vert: st.vert };
+            const setAll = (vals) => {
+              Object.assign(st, vals);
+              save();
+              GP.$$('.wb-field input', root).forEach((inp, k) => (inp.value = vals[['singles', 'horiz', 'vert'][k]]));
+              solve();
+            };
+            if (before.singles || before.horiz || before.vert) GP.toast('Pieces cleared', null, { label: 'Undo', onclick: () => setAll(before) });
+            setAll({ singles: '', horiz: '', vert: '' });
           } }))),
         show),
       h('aside', { class: 'panel' }, side)));
@@ -98,6 +106,8 @@
       GP.clear(show);
       const letterCount = p.s.length + p.hz.length * 2 + p.vt.length * 2;
       if (letterCount < 3) { results = []; render(true); return; }
+      current = null;
+      if (!GP.words.ready()) { GP.clear(side); side.appendChild(GP.loadingCard()); }
       GP.loadWords().then(() => {
         results = GP.words.wordBites(p.s, p.hz, p.vt).map((x) => Object.assign(x, { key: x.word + ':' + x.dir }));
         render();
@@ -109,10 +119,12 @@
       st.used = [...used];
       save();
       render();
+      if (current) select(current, true);
     }
 
-    function select(item) {
-      GP.sound.play('pop');
+    function select(item, quiet) {
+      current = item;
+      if (!quiet) { GP.sound.play('pop'); setTimeout(() => GP.showOnPhone(show), 30); }
       GP.clear(show);
       show.appendChild(h('div', { class: 'card focus-card' },
         h('div', { class: 'focus-word' }, item.word.toUpperCase()),
@@ -133,6 +145,7 @@
         GP.segmented([{ value: 'all', label: 'Both' }, { value: 'H', label: 'Across' }, { value: 'V', label: 'Down' }], st.dir, (v) => { st.dir = v; save(); render(); })));
       side.appendChild(h('div', { class: 'card grow' }, GP.wordResults({
         items: shown, used, onSelect: select, onToggleUsed: toggle,
+        query, onQuery: (q) => (query = q), selected: current && current.key,
         badge: (x) => h('em', { class: 'dir ' + x.dir }, x.dir === 'H' ? '→' : '↓'),
         emptyText: 'No words found with these pieces.',
       })));

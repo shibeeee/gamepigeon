@@ -105,6 +105,58 @@
     setTimeout(() => input.focus(), 40);
   };
 
+  /* On phones the panel sits under the board; bring the board back into view. */
+  GP.showOnPhone = (el) => {
+    if (!el || window.innerWidth > 900) return;
+    const r = el.getBoundingClientRect();
+    if (r.top < 60 || r.bottom > window.innerHeight) el.scrollIntoView({ behavior: GP.settings.animations ? 'smooth' : 'auto', block: 'start' });
+  };
+
+  /* Shown while the dictionary downloads (only the very first time). */
+  GP.loadingCard = () => h('div', { class: 'card empty-card' }, h('div', { class: 'spinner' }), h('p', null, 'Loading the dictionary…'));
+
+  /*
+   * A small round timer (GamePigeon word rounds are 80 seconds). It keeps
+   * running while the page redraws, and beeps near the end.
+   */
+  const timers = {};
+  GP.roundTimer = function (id) {
+    const t = (timers[id] = timers[id] || { end: 0, iv: null, el: null });
+    const len = () => GP.store.get('roundLen', 80);
+    const el = h('button', { type: 'button', class: 'round-timer', title: 'Round timer: tap to start or stop. Long rounds? Change the length in Settings.' });
+    t.el = el;
+    let lastSec = null;
+    function draw() {
+      const left = t.end ? Math.max(0, Math.ceil((t.end - Date.now()) / 1000)) : 0;
+      GP.clear(t.el);
+      t.el.classList.toggle('running', !!t.end);
+      t.el.classList.toggle('low', !!t.end && left <= 10);
+      t.el.style.setProperty('--p', t.end ? left / len() : 1);
+      t.el.append(GP.icon('play'), h('span', null, t.end ? left + 's' : len() + 's round'));
+      if (t.end && left !== lastSec) {
+        if (left <= 3 && left > 0) GP.sound.play('tick');
+        lastSec = left;
+      }
+      if (t.end && left === 0) {
+        stop();
+        GP.sound.play('buzzer');
+        GP.buzz(300);
+        GP.toast("Time's up!", 'warn');
+      }
+    }
+    function stop() { clearInterval(t.iv); t.iv = null; t.end = 0; draw(); }
+    el.addEventListener('click', () => {
+      if (t.end) { stop(); return; }
+      t.end = Date.now() + len() * 1000;
+      GP.sound.play('pop');
+      clearInterval(t.iv);
+      t.iv = setInterval(() => (document.contains(t.el) ? draw() : null), 250);
+      draw();
+    });
+    draw();
+    return el;
+  };
+
   /*
    * Results list. items: [{word, score, ...}]. Words you've entered in the
    * game can be ticked off ("used"); the list remembers them.
@@ -113,12 +165,37 @@
     const { items, used, onSelect, onToggleUsed } = opts;
     let selected = opts.selected || null;
     const el = h('div', { class: 'results' });
+    const words = new Set(items.map((x) => x.word));
     const total = items.reduce((a, x) => a + x.score, 0);
     const remaining = items.filter((x) => !used.has(x.key || x.word)).reduce((a, x) => a + x.score, 0);
     el.appendChild(h('div', { class: 'results-summary' },
       h('div', null, h('b', null, GP.fmt(items.length)), h('small', null, items.length === 1 ? 'word' : 'words')),
       h('div', null, h('b', null, GP.fmt(total)), h('small', null, 'points possible')),
       h('div', null, h('b', null, GP.fmt(used.size ? remaining : total)), h('small', null, 'points left'))));
+
+    // Search box: filters the list and checks any word against the dictionary.
+    const search = h('input', { class: 'text-input filter', type: 'search', placeholder: 'Find or check a word', value: opts.query || '', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Find or check a word' });
+    const check = h('small', { class: 'check' });
+    const copy = GP.button('', { icon: 'paste', kind: 'ghost', title: 'Copy the word list', onclick: () => {
+      const text = items.filter((x) => !used.has(x.key || x.word)).map((x) => x.word.toUpperCase()).join('\n');
+      (navigator.clipboard ? navigator.clipboard.writeText(text) : Promise.reject()).then(
+        () => GP.toast('Copied ' + GP.plural(text ? text.split('\n').length : 0, 'word'), 'good'),
+        () => GP.toast('Copying is blocked in this browser', 'warn'));
+    } });
+    el.appendChild(h('div', { class: 'filter-row' }, h('div', { class: 'filter-wrap' }, search, check), copy));
+    const applyFilter = () => {
+      const q = search.value.trim().toLowerCase().replace(/[^a-z]/g, '');
+      if (opts.onQuery) opts.onQuery(q);
+      GP.$$('.word-chip', el).forEach((c) => (c.hidden = !!q && !c.dataset.w.includes(q)));
+      GP.$$('.word-group', el).forEach((g) => (g.hidden = !GP.$$('.word-chip', g).some((c) => !c.hidden)));
+      check.className = 'check';
+      if (q.length >= 3 && GP.words.ready()) {
+        if (words.has(q)) { check.textContent = '✓ ' + q.toUpperCase() + ' is on this board'; check.classList.add('good'); }
+        else if (GP.words.isWord(q)) { check.textContent = q.toUpperCase() + ' is a word, but you can\'t make it here'; check.classList.add('mid'); }
+        else { check.textContent = '✗ ' + q.toUpperCase() + ' is not in the dictionary'; check.classList.add('bad'); }
+      } else check.textContent = '';
+    };
+    search.addEventListener('input', applyFilter);
 
     const byLen = new Map();
     items.forEach((x) => {
@@ -138,12 +215,14 @@
             title: 'Tap to show, double-tap to tick off',
             onclick: () => { selected = key; GP.$$('.word-chip.on', el).forEach((c) => c.classList.remove('on')); chip.classList.add('on'); onSelect(x); },
             ondblclick: () => onToggleUsed(key),
+            dataset: { w: x.word },
           }, x.word.toUpperCase(), opts.badge ? opts.badge(x) : null);
           return chip;
         }))));
     }
     if (!items.length) list.appendChild(h('p', { class: 'empty' }, opts.emptyText || 'No words yet.'));
     el.appendChild(list);
+    if (search.value) applyFilter();
     return el;
   };
 })();

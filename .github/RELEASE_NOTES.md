@@ -6,6 +6,16 @@ Open that link on your phone or computer. Nothing to install. On iPhone,
 tap Share and then **Add to Home Screen** to get an app icon; it then works
 offline too.
 
+## New in this version
+
+- A coach bar under every board shows the best move, explains why, and plays it with one tap
+- Mancala has an upright layout that matches GamePigeon on phones, with numbered pits
+- Word games get a round timer, a word search and checker, copy-to-clipboard and Undo after clearing
+- Tapping a word on a phone scrolls its path into view
+- Home screen: install tip, share button, "last played" times, and Continue opens your most recent game
+- Settings: round timer length, and your win/loss records with a reset button
+- The dictionary preloads in the background, and updates now show up right away
+
 ## What's inside
 
 Coaches and solvers for GamePigeon games:

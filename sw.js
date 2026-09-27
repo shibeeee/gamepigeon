@@ -1,5 +1,9 @@
-/* Offline support: serve the app from cache, refresh the cache in the background. */
-const CACHE = 'pigeon-pal-v1';
+/*
+ * Offline support. App code is fetched fresh when online (so updates show up
+ * right away) and falls back to the cache offline. The big dictionary never
+ * changes, so it is served from the cache first.
+ */
+const CACHE = 'pigeon-pal-v2';
 const FILES = [
   './', 'index.html', 'css/style.css', 'manifest.webmanifest', 'icons/icon.svg', 'data/words.js',
   'js/engines/common.js', 'js/engines/connect4.js', 'js/engines/othello.js', 'js/engines/gomoku.js',
@@ -20,12 +24,19 @@ self.addEventListener('activate', (e) => {
 });
 
 self.addEventListener('fetch', (e) => {
-  if (e.request.method !== 'GET' || new URL(e.request.url).origin !== location.origin) return;
-  e.respondWith(caches.open(CACHE).then((cache) => cache.match(e.request, { ignoreSearch: true }).then((hit) => {
-    const fresh = fetch(e.request).then((res) => {
+  const url = new URL(e.request.url);
+  if (e.request.method !== 'GET' || url.origin !== location.origin) return;
+  const cacheFirst = url.pathname.endsWith('/data/words.js') || url.pathname.includes('/icons/');
+  e.respondWith(caches.open(CACHE).then(async (cache) => {
+    const hit = await cache.match(e.request, { ignoreSearch: true });
+    if (cacheFirst && hit) return hit;
+    try {
+      const res = await fetch(e.request);
       if (res.ok) cache.put(e.request, res.clone());
       return res;
-    }).catch(() => hit);
-    return hit || fresh;
-  })));
+    } catch (err) {
+      if (hit) return hit;
+      throw err;
+    }
+  }));
 });

@@ -125,6 +125,17 @@
       pits[6] = 0; pits[13] = 0;
       return { pits, turn: opts && opts.first ? 1 : 0, mode: (opts && opts.mode) || 'capture', last: null };
     },
+    /* What a move does: extra turn, pebbles banked, captures, avalanche pick-ups. */
+    outcome(s, k) {
+      const p = s.pits.slice(), t = [];
+      const extra = sow(p, s.turn, k, s.mode, t);
+      return {
+        extra,
+        banked: p[STORE[s.turn]] - s.pits[STORE[s.turn]],
+        captured: t.includes('capture'),
+        pickups: t.filter((x) => typeof x === 'number' && x < 0).length,
+      };
+    },
     /* Replays a move and returns the slots touched, for animation. */
     trace(s, k) {
       const p = s.pits.slice(), t = [];

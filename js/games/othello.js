@@ -53,6 +53,12 @@
     swatch: (p) => GP.pieceSwatch('othp' + p),
     moveLabel: label,
     passMove: E.PASS,
+    explain(s, m) {
+      if (m === E.PASS) return 'no legal moves, so you must pass';
+      const n = E.flipsFor(s, m).length;
+      const corner = [0, 7, 56, 63].includes(m);
+      return (corner ? 'takes a corner, ' : '') + 'flips ' + GP.plural(n, 'disc');
+    },
     evalScale: 300,
     render,
     onPlayed: (game, m) => GP.sound.play(m === E.PASS ? 'click' : 'flip'),

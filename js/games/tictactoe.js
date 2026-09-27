@@ -49,6 +49,7 @@
     swatch: (p) => h('i', { class: 'piece-swatch tttp' + p }, p ? 'O' : 'X'),
     moveLabel: (m) => ['Top left', 'Top', 'Top right', 'Left', 'Center', 'Right', 'Bottom left', 'Bottom', 'Bottom right'][m],
     render,
+    explain: GP.explainPlacement,
     editTools: [
       { value: 0, label: 'X', swatch: '#ff4f93' },
       { value: 1, label: 'O', swatch: '#2f7bff' },

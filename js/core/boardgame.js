@@ -29,6 +29,8 @@
       this.build();
       this.onKey = this.onKey.bind(this);
       document.addEventListener('keydown', this.onKey);
+      this.onResize = GP.debounce(() => this.renderBoard(), 150);
+      window.addEventListener('resize', this.onResize);
       this.update();
     }
 
@@ -301,6 +303,42 @@
       }
     }
 
+    /* Everything the UI needs to present the current analysis, or null. */
+    insight() {
+      if (!this.analysis || this.engine.result(this.state)) return null;
+      const cfg = this.cfg, r = this.analysis.res, s = this.state;
+      const sc = this.analysis.side === this.me ? r.score : -r.score;
+      const pct = Math.abs(sc) >= GP.DECISIVE ? (sc > 0 ? 100 : 0) : 50 + 50 * Math.tanh(sc / (cfg.evalScale || 400));
+      const end = this.engine.movesToEnd && Math.abs(r.score) > GP.WIN - 1000 ? this.engine.movesToEnd(r.score) : null;
+      let verdict = GP.describeScore(sc, cfg.evalUnit);
+      if (end != null) verdict = (sc > 0 ? 'You win' : 'You lose') + ' in ' + GP.plural(end, 'move') + ' with best play';
+      else if (Math.abs(sc) >= GP.DECISIVE) verdict = sc > 0 ? 'You are winning' : 'You are losing';
+      return {
+        res: r, pct, verdict,
+        label: cfg.moveLabel(r.move, s),
+        who: this.analysis.side === this.me ? 'you' : this.who(this.analysis.side).toLowerCase(),
+        mine: this.analysis.side === this.me,
+        why: cfg.explain ? cfg.explain(s, r.move, this.engine) : null,
+      };
+    }
+
+    /* Compact hint bar under the board, so phones don't have to scroll to the panel. */
+    renderCoach(el) {
+      const ins = this.insight();
+      const s = this.state;
+      if (this.editing || this.engine.result(s)) return;
+      if (!ins) {
+        if (this.thinking && !(this.mode === 'ai' && s.turn !== this.me)) el.appendChild(h('div', { class: 'coach thinking' }, GP.icon('bulb'), h('span', null, 'Finding the best move'), h('span', { class: 'dots' }, h('i'), h('i'), h('i'))));
+        return;
+      }
+      const canPlay = !(this.mode === 'ai' && s.turn !== this.me);
+      el.appendChild(h('div', { class: 'coach' + (ins.pct >= 100 ? ' good' : ins.pct <= 0 ? ' bad' : '') },
+        GP.icon('bulb'),
+        h('span', { class: 'coach-text' }, h('b', null, (ins.mine ? 'Best move: ' : 'Their best: ') + ins.label),
+          h('small', null, [ins.why, ins.verdict].filter(Boolean).join(' · '))),
+        canPlay ? button('Play it', { kind: 'primary', class: 'btn-sm', onclick: () => this.play(ins.res.move) }) : null));
+    }
+
     renderControls() {
       const el = GP.clear(this.controlsEl);
       if (this.editing) {
@@ -319,6 +357,7 @@
         return;
       }
       const over = !!this.engine.result(this.state);
+      this.renderCoach(el);
       el.appendChild(h('div', { class: 'btn-row' },
         button('Undo', { icon: 'undo', onclick: () => this.undo(), disabled: this.idx === 0, title: 'Undo (Ctrl+Z)' }),
         button('Redo', { icon: 'redo', onclick: () => this.redo(), disabled: this.idx >= this.history.length - 1, title: 'Redo (Ctrl+Y)' }),
@@ -352,26 +391,17 @@
           }))));
 
       // AI
-      const r = this.analysis && this.analysis.res;
-      const forMe = this.analysis && this.analysis.side === this.me;
-      let evalPct = 50, evalText = this.thinking ? 'Thinking…' : 'Tap Hint to analyze';
-      if (r) {
-        const sc = forMe ? r.score : -r.score;
-        evalPct = Math.abs(sc) >= GP.DECISIVE ? (sc > 0 ? 100 : 0) : 50 + 50 * Math.tanh(sc / (cfg.evalScale || 400));
-        const mv = cfg.moveLabel(r.move, this.state);
-        const end = this.engine.movesToEnd && Math.abs(r.score) >= GP.DECISIVE && Math.abs(r.score) > GP.WIN - 1000
-          ? this.engine.movesToEnd(r.score) : null;
-        const who = this.analysis.side === this.me ? 'you' : this.who(this.analysis.side).toLowerCase();
-        let verdict = GP.describeScore(sc, cfg.evalUnit);
-        if (end != null) verdict = (sc > 0 ? 'You win' : 'You lose') + ' in ' + GP.plural(end, 'move') + ' with best play';
-        else if (Math.abs(sc) >= GP.DECISIVE) verdict = sc > 0 ? 'You are winning' : 'You are losing';
-        evalText = 'Best for ' + who + ': ' + mv + '  ·  ' + verdict;
-      }
+      const ins = this.insight();
+      const r = ins && ins.res;
+      const evalText = ins
+        ? 'Best for ' + ins.who + ': ' + ins.label + '  ·  ' + ins.verdict
+        : this.thinking ? 'Thinking…' : 'Tap Hint to analyze';
       el.appendChild(h('div', { class: 'card' },
         h('h3', null, 'AI coach'),
         h('div', { class: 'evalbar', title: 'Who is ahead (your side on the left)' },
-          h('i', { style: { width: evalPct + '%' } })),
-        h('p', { class: 'eval-text' }, evalText, r ? h('small', null, ' (looked ' + r.depth + ' moves ahead)') : null),
+          h('i', { style: { width: (ins ? ins.pct : 50) + '%' } })),
+        h('p', { class: 'eval-text' }, evalText, ins && ins.why ? h('span', { class: 'why' }, ' (' + ins.why + ')') : null,
+          r ? h('small', null, ' Looked ' + r.depth + ' moves ahead.') : null),
         toggle('Show my best move automatically', this.autoHint, (v) => { this.autoHint = v; this.update(); }),
         this.mode === 'ai' ? h('div', { class: 'field' }, h('label', null, 'Computer strength'),
           segmented([
@@ -411,10 +441,22 @@
       GP.ai.cancel();
       this.token++;
       document.removeEventListener('keydown', this.onKey);
+      window.removeEventListener('resize', this.onResize);
     }
   }
 
   GP.BoardGame = BoardGame;
+
+  /* "Why" text for games where a move places a piece: winning now, or blocking a win. */
+  GP.explainPlacement = function (s, m, E) {
+    const r = E.result(E.apply(s, m));
+    if (r && r.winner === s.turn) return 'wins right now';
+    try {
+      const theirs = E.result(E.apply(Object.assign({}, s, { turn: 1 - s.turn }), m));
+      if (theirs && theirs.winner === 1 - s.turn) return 'blocks their win';
+    } catch (e) { /* the move isn't legal for them */ }
+    return null;
+  };
 
   /* Simple circular piece swatch. */
   GP.pieceSwatch = (cls) => h('i', { class: 'piece-swatch ' + cls });

@@ -30,8 +30,16 @@ installed, works offline once loaded, and saves everything automatically.
   GamePigeon match: enter your opponent's moves and follow the highlighted
   suggestion. *Computer* mode lets you practice against the AI at four
   strengths, and keeps your win/loss record.
+- **Coach bar** under every board: the best move, why it's good ("blocks
+  their win", "flips 5 discs", "lands in the store for another turn") and a
+  **Play it** button.
 - **Undo, redo and a clickable move list** in every board game.
 - **Board editor** to copy a game that is already in progress.
+- **Word game helpers**: an 80-second round timer, a search box that also
+  tells you whether any word is valid, one-tap copy of the word list, and
+  Undo after clearing a board.
+- **Mancala upright view** that matches GamePigeon's phone layout, with
+  numbered pits.
 - **Autosave.** Close the tab mid-game and pick up exactly where you left off.
   Back up and restore everything from Settings.
 - **Light and dark themes**, accent colors, a color-blind palette, sound

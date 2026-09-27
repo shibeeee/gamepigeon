@@ -5,20 +5,22 @@
   const E = GP.engines.mancala;
 
   // Stable pseudo-random pebble positions, so pebbles don't jump around on redraw.
-  function pebbleSpots(slot, count, wide) {
+  // Stores are tall on the classic board and wide on the upright one.
+  function pebbleSpots(slot, count, store, upright) {
     const out = [];
     let seed = slot * 7919 + 17;
     const rnd = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
     for (let k = 0; k < Math.min(count, 24); k++) {
       const a = rnd() * Math.PI * 2, d = Math.sqrt(rnd()) * 0.34;
-      out.push([50 + Math.cos(a) * d * 100 * (wide ? 0.7 : 1), 50 + Math.sin(a) * d * 100 * (wide ? 1.1 : 1)]);
+      const sx = !store ? 1 : upright ? 1.3 : 0.7, sy = !store ? 1 : upright ? 0.6 : 1.1;
+      out.push([50 + Math.cos(a) * d * 100 * sx, 50 + Math.sin(a) * d * 100 * sy]);
     }
     return out;
   }
   const HUES = ['#ff6b6b', '#4dabf7', '#51cf66', '#fcc419', '#cc5de8', '#ff922b', '#22b8cf'];
 
   function slotEl(slot, count, isStore, opts) {
-    const spots = pebbleSpots(slot, count, isStore);
+    const spots = pebbleSpots(slot, count, isStore, opts.upright);
     const el = h('button', {
       type: 'button',
       class: (isStore ? 'mc-store' : 'mc-pit') + (opts.cls || ''),
@@ -29,7 +31,8 @@
     h('span', { class: 'mc-pebbles' }, spots.map(([x, y], k) => h('i', {
       style: { left: x + '%', top: y + '%', background: HUES[(slot * 3 + k) % HUES.length] },
     }))),
-    h('b', { class: 'mc-count' }, count));
+    h('b', { class: 'mc-count' }, count),
+    opts.num ? h('em', { class: 'mc-num' }, opts.num) : null);
     return el;
   }
 
@@ -41,6 +44,7 @@
     const touched = new Map();
     if (v.animate) E.trace(v.animate.from, v.animate.move).forEach((i, k) => { if (typeof i === 'number' && i >= 0 && !touched.has(i)) touched.set(i, k); });
 
+    const upright = layout() === 'down' || (layout() === 'auto' && host.clientWidth < 600);
     const pitFor = (side, k) => {
       const slot = E.pitIndex(side, k);
       const mine = side === s.turn && legal.has(k);
@@ -49,6 +53,8 @@
         aria: (side === me ? 'Your' : 'Opponent') + ' pit ' + (k + 1),
         cls: (mine && v.canPlay ? ' playable' : '') + (isHint ? ' hint' : '') + (touched.has(slot) ? ' bump' : '') + (v.animate && E.pitIndex(v.animate.from.turn, v.animate.move) === slot ? ' source' : ''),
         delay: touched.has(slot) ? touched.get(slot) * 70 : null,
+        num: k + 1,
+        upright,
         onclick: v.editing ? () => v.onEdit(slot) : mine && v.canPlay ? () => v.onMove(k) : null,
       });
     };
@@ -57,21 +63,36 @@
       return slotEl(slot, p[slot], true, {
         aria: (side === me ? 'Your' : 'Opponent') + ' store',
         cls: ' side' + (side === me ? 'me' : 'op') + (touched.has(slot) ? ' bump' : ''),
+        upright,
         delay: touched.has(slot) ? touched.get(slot) * 70 : null,
         onclick: v.editing ? () => v.onEdit(slot) : null,
       });
     };
 
-    const top = h('div', { class: 'mc-row top' });
-    for (let k = 5; k >= 0; k--) top.appendChild(pitFor(op, k));
-    const bottom = h('div', { class: 'mc-row bottom' });
-    for (let k = 0; k < 6; k++) bottom.appendChild(pitFor(me, k));
-
-    host.appendChild(h('div', { class: 'mc-wrap' },
-      h('div', { class: 'mc-label' }, g.who(op) + ' (' + g.sideName(op) + ')'),
-      h('div', { class: 'mc-board' + (s.turn === me ? ' my-turn' : ' op-turn') }, store(op), h('div', { class: 'mc-rows' }, top, bottom), store(me)),
-      h('div', { class: 'mc-label' }, g.who(me) + ' (' + g.sideName(me) + ')')));
+    // "Upright" matches GamePigeon on a phone: your pits run down the left,
+    // your store is at the bottom. "Across" is the classic wide board.
+    let board;
+    if (upright) {
+      board = h('div', { class: 'mc-board upright' + (s.turn === me ? ' my-turn' : ' op-turn') }, store(op));
+      const cols = h('div', { class: 'mc-cols' });
+      for (let k = 0; k < 6; k++) cols.append(pitFor(me, k), pitFor(op, 5 - k));
+      board.append(cols, store(me));
+    } else {
+      const top = h('div', { class: 'mc-row top' });
+      for (let k = 5; k >= 0; k--) top.appendChild(pitFor(op, k));
+      const bottom = h('div', { class: 'mc-row bottom' });
+      for (let k = 0; k < 6; k++) bottom.appendChild(pitFor(me, k));
+      board = h('div', { class: 'mc-board' + (s.turn === me ? ' my-turn' : ' op-turn') }, store(op), h('div', { class: 'mc-rows' }, top, bottom), store(me));
+    }
+    const view = GP.segmented([{ value: 'auto', label: 'Auto' }, { value: 'down', label: 'Upright' }, { value: 'across', label: 'Across' }],
+      layout(), (val) => { GP.store.set('mancalaLayout', val); g.renderBoard(); }, 'seg-small');
+    host.appendChild(h('div', { class: 'mc-wrap' + (upright ? ' upright' : '') },
+      h('div', { class: 'mc-top' }, h('span', { class: 'mc-label' }, g.who(op) + ' (' + g.sideName(op) + ')'), view),
+      board,
+      h('div', { class: 'mc-label' }, g.who(me) + ' (' + g.sideName(me) + ')' + (upright ? ': your pits are on the left' : ''))));
   }
+
+  const layout = () => GP.store.get('mancalaLayout', 'auto');
 
   function makeCfg(mode) {
     return {
@@ -87,6 +108,14 @@
         choices: [3, 4, 5, 6].map((n) => ({ value: n, label: String(n) })),
       }],
       render,
+      explain(s, k) {
+        const o = E.outcome(s, k), bits = [];
+        if (o.extra) bits.push('lands in the store for another turn');
+        if (o.captured) bits.push('captures');
+        if (o.pickups) bits.push('chains ' + GP.plural(o.pickups, 'time'));
+        if (o.banked > 0 && !o.extra) bits.push('banks ' + GP.plural(o.banked, 'pebble'));
+        return bits.join(', ') || null;
+      },
       onPlayed: (game, m, from, to) => GP.sound.play(from.turn === to.turn && !GP.engines.mancala.result(to) ? 'hint' : 'place'),
       yourTurnText: (game) => {
         const s = game.state;

@@ -9,6 +9,8 @@
     const save = () => GP.store.set('anagrams', st);
     let used = new Set(st.used);
     let results = [];
+    let query = '';
+    let current = null; // word shown in the preview card
     let tiles;
 
     const tileHost = h('div', { class: 'ana-rack' });
@@ -19,12 +21,16 @@
       h('section', { class: 'play-area' },
         h('div', { class: 'toolbar' }, GP.segmented([{ value: 6, label: '6 letters' }, { value: 7, label: '7 letters' }], st.count, (v) => {
           st.count = v; save(); build(); solve();
-        })),
+        }), GP.roundTimer('anagrams')),
         tileHost,
         h('div', { class: 'btn-row' },
           GP.button('Type letters', { icon: 'paste', onclick: () => GP.pasteDialog(st.count, (t) => tiles.fill(t, 0)) }),
           GP.button('Random', { icon: 'shuffle', onclick: randomize }),
-          GP.button('Clear', { icon: 'trash', kind: 'ghost', onclick: () => { st.letters = []; save(); build(); solve(); tiles.focusFirstEmpty(); } })),
+          GP.button('Clear', { icon: 'trash', kind: 'ghost', onclick: () => {
+            const before = st.letters.slice();
+            if (before.some(Boolean)) GP.toast('Letters cleared', null, { label: 'Undo', onclick: () => { st.letters = before; save(); build(); solve(); } });
+            st.letters = []; save(); build(); solve(); tiles.focusFirstEmpty();
+          } })),
         preview),
       h('aside', { class: 'panel' }, side)));
 
@@ -53,15 +59,18 @@
         render(vals.filter(Boolean).length);
         return;
       }
+      current = null;
+      if (!GP.words.ready()) { GP.clear(side); side.appendChild(GP.loadingCard()); }
       GP.loadWords().then(() => {
         results = GP.words.anagrams(vals.join(''));
         render();
       }, (e) => GP.toast(e.message, 'error'));
     }
 
-    function show(item) {
+    function show(item, quiet) {
+      current = item;
       GP.clear(preview);
-      GP.sound.play('pop');
+      if (!quiet) { GP.sound.play('pop'); setTimeout(() => GP.showOnPhone(tileHost), 30); }
       const pool = letters().map((ch) => ch.toLowerCase());
       const order = [];
       for (const ch of item.word) {
@@ -86,6 +95,7 @@
       st.used = [...used];
       save();
       render();
+      if (current) show(current, true);
     }
 
     function render(filled) {
@@ -97,6 +107,7 @@
       }
       side.appendChild(h('div', { class: 'card grow' }, GP.wordResults({
         items: results, used, onSelect: show, onToggleUsed: toggle, emptyText: 'No words found.',
+        query, onQuery: (q) => (query = q), selected: current && current.word,
       })));
     }
 

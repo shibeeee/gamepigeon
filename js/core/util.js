@@ -138,6 +138,7 @@
     list: '<path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/>',
     grid: '<rect x="4" y="4" width="7" height="7" rx="1"/><rect x="13" y="4" width="7" height="7" rx="1"/><rect x="4" y="13" width="7" height="7" rx="1"/><rect x="13" y="13" width="7" height="7" rx="1"/>',
     target: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="5"/><circle cx="12" cy="12" r="1"/>',
+    share: '<path d="M12 3v12M7 8l5-5 5 5"/><path d="M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7"/>',
     paste: '<rect x="6" y="4" width="12" height="17" rx="2"/><path d="M9 4h6v3H9z"/>',
   };
   GP.icon = function (name, cls) {
@@ -184,12 +185,15 @@
   };
 
   /* ---------- Toasts ---------- */
-  GP.toast = function (msg, kind) {
+  /* action: optional {label, onclick}, e.g. an Undo button. */
+  GP.toast = function (msg, kind, action) {
     let host = GP.$('#toasts');
     if (!host) host = document.body.appendChild(GP.h('div', { id: 'toasts', 'aria-live': 'polite' }));
-    const t = host.appendChild(GP.h('div', { class: 'toast' + (kind ? ' toast-' + kind : '') }, msg));
-    setTimeout(() => t.classList.add('out'), 2600);
-    setTimeout(() => t.remove(), 3000);
+    const t = host.appendChild(GP.h('div', { class: 'toast' + (kind ? ' toast-' + kind : '') + (action ? ' has-action' : '') }, msg,
+      action ? GP.h('button', { type: 'button', onclick: () => { action.onclick(); t.remove(); } }, action.label) : null));
+    const life = action ? 5000 : 2600;
+    setTimeout(() => t.classList.add('out'), life);
+    setTimeout(() => t.remove(), life + 400);
   };
 
   /* ---------- Dialogs ---------- */
@@ -235,6 +239,8 @@
     splash: [[200, 0.15, 'sawtooth', 0.04], [120, 0.2, 'sine', 0.1, 0.03]],
     boom: [[90, 0.3, 'sawtooth', 0.12], [60, 0.35, 'sine', 0.2, 0.02]],
     pop: [[980, 0.04, 'sine', 0.1]],
+    tick: [[1200, 0.03, 'square', 0.04]],
+    buzzer: [[220, 0.5, 'sawtooth', 0.08], [180, 0.5, 'square', 0.05]],
   };
   GP.sound = {
     play(name) {
