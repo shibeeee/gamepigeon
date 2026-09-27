@@ -1,6 +1,6 @@
 ## Play it online
 
-**https://shibeeee.github.io/gamepigeon/**
+**https://shibeeee.github.io/pidgeon-pal/**
 
 Open that link on your phone or computer. Nothing to install. On iPhone,
 tap Share and then **Add to Home Screen** to get an app icon; it then works

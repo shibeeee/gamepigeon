@@ -1,6 +1,6 @@
 # Pigeon Pal
 
-**Play it: https://shibeeee.github.io/gamepigeon/**
+**Play it: https://shibeeee.github.io/pidgeon-pal/**
 
 A friendly coach for GamePigeon games. Type in what you see on your phone and
 Pigeon Pal shows you the best move, finds every word, or tells you where the
@@ -51,7 +51,7 @@ installed, works offline once loaded, and saves everything automatically.
 
 ## Running it
 
-**Online:** https://shibeeee.github.io/gamepigeon/
+**Online:** https://shibeeee.github.io/pidgeon-pal/
 
 Every push to the default branch runs the tests and republishes the site
 (the `Test and publish website` workflow copies the app to the `gh-pages`
