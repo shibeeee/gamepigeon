@@ -16,8 +16,11 @@
 
   // Selection lives outside the render so it survives redraws of the same position.
   let sel = null, selFen = null;
+  // While a piece is being dragged, redraws wait until it's dropped.
+  let drag = null, pending = null;
 
   function render(host, v) {
+    if (drag) { pending = { host, v }; return; }
     const s = v.state, g = E.game(s);
     GP.clear(host);
     if (!g) { host.appendChild(h('p', { class: 'empty' }, 'This position is not valid. Use Edit to fix it.')); return; }
@@ -119,20 +122,22 @@
    * mouse, finger and pen: a short press is a tap, anything else a drag.
    */
   function bindPointer(grid, wrap, v, g, board, flip) {
-    const at = (x, y) => { const el = document.elementFromPoint(x, y); const c = el && el.closest('.csq'); return c && grid.contains(c) ? c.dataset.sq : null; };
+    // Any board square under the pointer (the board may have been redrawn meanwhile).
+    const at = (x, y) => { const el = document.elementFromPoint(x, y); const c = el && el.closest('.chess .csq'); return c ? c.dataset.sq : null; };
     const pieceAt = (name) => { const r = 8 - +name[1], c = FILES.indexOf(name[0]); return board[r][c]; };
     grid.addEventListener('pointerdown', (e) => {
+      if (drag) return;
       const from = at(e.clientX, e.clientY);
       if (!from) return;
       const p = pieceAt(from);
       const canDrag = !v.editing && v.canPlay && p && p.color === g.turn() && v.legal.some((m) => m.startsWith(from));
-      const start = { x: e.clientX, y: e.clientY, from, p, drag: null };
       e.preventDefault();
-      grid.setPointerCapture(e.pointerId);
+      // Listen on the whole window, so a drag never gets lost if the board redraws.
+      drag = { id: e.pointerId, x: e.clientX, y: e.clientY, from, ghost: null };
       const move = (ev) => {
-        if (!canDrag) return;
-        if (!start.drag && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 6) return;
-        if (!start.drag) {
+        if (ev.pointerId !== drag.id || !canDrag) return;
+        if (!drag.ghost && Math.hypot(ev.clientX - drag.x, ev.clientY - drag.y) < 6) return;
+        if (!drag.ghost) {
           // Lift the piece: show where it can go and follow the pointer.
           sel = from;
           const cell = grid.querySelector('[data-sq="' + from + '"]');
@@ -142,26 +147,36 @@
             if (dests.includes(c.dataset.sq)) c.classList.add(pieceAt(c.dataset.sq) ? 'capture' : 'dest');
           });
           cell.classList.add('sel', 'lifted');
-          start.drag = document.body.appendChild(h('span', { class: 'drag-piece', style: { width: size + 'px', height: size + 'px' } }, piece(p)));
+          drag.ghost = document.body.appendChild(h('span', { class: 'drag-piece', style: { width: size + 'px', height: size + 'px' } }, piece(p)));
         }
-        start.drag.style.transform = `translate(${ev.clientX}px, ${ev.clientY}px)`;
+        drag.ghost.style.transform = `translate(${ev.clientX}px, ${ev.clientY}px)`;
       };
-      const up = (ev) => {
-        grid.removeEventListener('pointermove', move);
-        grid.removeEventListener('pointerup', up);
-        grid.removeEventListener('pointercancel', up);
-        if (!start.drag) { click(v, from, p, g); return; } // a tap
-        start.drag.remove();
+      const end = (ev) => {
+        if (ev.pointerId !== drag.id) return;
+        window.removeEventListener('pointermove', move);
+        window.removeEventListener('pointerup', end);
+        window.removeEventListener('pointercancel', end);
+        window.removeEventListener('blur', end);
+        const d = drag;
+        drag = null;
+        document.querySelectorAll('.drag-piece').forEach((x) => x.remove());
+        const redraw = () => { const pend = pending; pending = null; if (pend) render(pend.host, pend.v); else v.game.renderBoard(); };
+        if (!d.ghost) {
+          if (ev.type === 'pointerup') click(v, from, p, g); // a tap
+          else redraw();
+          return;
+        }
         const to = ev.type === 'pointerup' ? at(ev.clientX, ev.clientY) : null;
         const opts = to && to !== from ? v.legal.filter((m) => m.startsWith(from + to)) : [];
-        if (opts.length === 1) { sel = null; v.onMove(opts[0]); return; }
-        if (opts.length > 1) { promote(opts, v, to, wrap, flip); return; }
+        if (opts.length === 1) { sel = null; pending = null; v.onMove(opts[0]); return; }
+        if (opts.length > 1) { pending = null; promote(opts, v, to, GP.$('.chess-wrap') || wrap, flip); return; }
         sel = to === from ? from : null;
-        v.game.renderBoard();
+        redraw();
       };
-      grid.addEventListener('pointermove', move);
-      grid.addEventListener('pointerup', up);
-      grid.addEventListener('pointercancel', up);
+      window.addEventListener('pointermove', move);
+      window.addEventListener('pointerup', end);
+      window.addEventListener('pointercancel', end);
+      window.addEventListener('blur', end);
     });
   }
 
