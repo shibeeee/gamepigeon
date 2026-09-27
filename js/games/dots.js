@@ -20,7 +20,6 @@
     const P = 0.5, W = g.C + 2 * P, H = g.R + 2 * P;
     const svg = h('svg:svg', { viewBox: `0 0 ${W} ${H}`, class: 'dots' });
     const legal = new Set(v.legal);
-    const risky = new Set(v.threats ? v.threats.cells : []);
     const lastSet = new Set(s.lastLines || (s.last != null ? [s.last] : []));
 
     // boxes
@@ -39,7 +38,6 @@
       if (drawn) cls.push('on');
       if (lastSet.has(l)) cls.push('last');
       if (v.hint && v.hint.move === l) cls.push('hint');
-      if (!drawn && risky.has(l)) cls.push('risky');
       if (!drawn && legal.has(l) && v.canPlay) cls.push('playable', 's' + s.turn);
       svg.appendChild(h('svg:line', { x1, y1, x2, y2, class: cls.join(' ') }));
       const hit = h('svg:line', { x1, y1, x2, y2, class: 'dhit' });
@@ -80,14 +78,6 @@
       if (give) return 'gives away a box, but it is the best of bad options';
       return 'safe: gives nothing away';
     },
-    threats(s) {
-      const legal = E.legal(s);
-      const safe = legal.filter((l) => !E.completes(s, l) && !E.gives(s, l));
-      if (!safe.length) return null; // everything left is a sacrifice anyway
-      const risky = legal.filter((l) => !E.completes(s, l) && E.gives(s, l));
-      if (!risky.length) return null;
-      return { cells: risky, text: 'Red lines would hand your opponent a box. ' + GP.plural(safe.length, 'safe line') + ' left.' };
-    },
     resultText: (res) => '(' + res.score[0] + ' to ' + res.score[1] + ')',
     editTools: [{ value: 1, label: 'Toggle line' }],
     edit(s, l) {
@@ -115,7 +105,6 @@
     color: '#5c6bc0',
     help: `<p>Take turns drawing a line between two dots. Finish a box and it's yours, and you go again. Most boxes wins.</p>
       <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
-      <li>Red lines would give them a box. Avoid them while you can.</li>
       <li>Near the end, the bot sometimes gives away two boxes on purpose. That's usually how you win the rest.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });

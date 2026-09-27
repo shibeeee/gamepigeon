@@ -23,7 +23,7 @@
     for (let c = 0; c < W; c++) {
       const col = h('button', {
         type: 'button',
-        class: 'c4-col' + (legal.has(c) && v.canPlay ? ' playable' : '') + (c === hintCol ? ' hint' : '') + (v.editing ? ' editing' : '') + (v.threats && v.threats.cells.includes(c) ? ' threat' : ''),
+        class: 'c4-col' + (legal.has(c) && v.canPlay ? ' playable' : '') + (c === hintCol ? ' hint' : '') + (v.editing ? ' editing' : ''),
         'aria-label': 'Column ' + (c + 1),
         onclick: v.editing ? null : () => v.onMove(c),
       });
@@ -68,26 +68,6 @@
     evalUnit: 50,
     render,
     explain: GP.explainPlacement,
-    threats(s, me) {
-      const opp = 1 - me, now = [], below = [];
-      for (let c = 0; c < W; c++) {
-        if (s.b[c] !== -1) continue;
-        // They'd win by playing here themselves
-        const r1 = E.result(E.apply(Object.assign({}, s, { turn: opp }), c));
-        if (r1 && r1.winner === opp) { now.push(c); continue; }
-        // Playing here would let them win on top
-        const mine = E.apply(s, c);
-        if (mine.b[c] === -1) {
-          const r2 = E.result(E.apply(mine, c));
-          if (r2 && r2.winner === opp) below.push(c);
-        }
-      }
-      if (!now.length && !below.length) return null;
-      const txt = [];
-      if (now.length) txt.push('They win at column ' + now.map((c) => c + 1).join(' or ') + ' unless you block');
-      if (below.length) txt.push("Don't play column " + below.map((c) => c + 1).join(' or ') + ': it sets up their win');
-      return { cells: now.concat(below), text: txt.join('. ') };
-    },
     onPlayed: () => {},
     editTools: [
       { value: 0, label: 'Red', swatch: '#f0463c' },
@@ -119,8 +99,7 @@
     color: '#2f7bff',
     help: `<p>Drop discs into the columns. First to get four in a row wins.</p>
       <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
-      <li>Under each column you'll see if it wins, loses or ties with perfect play.</li>
-      <li>Red means danger: a column they can win in, or one that sets up their win.</li></ul>`,
+      <li>Under each column you'll see if it wins, loses or ties with perfect play.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });
 })();

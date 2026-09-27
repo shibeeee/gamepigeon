@@ -225,21 +225,7 @@
     return null;
   }
 
-  /* Cells where player p wins now (five) or makes an unstoppable double threat. */
-  function dangerCells(state, p) {
-    const ctx = makeCtx(state);
-    const five = [...fiveCells(ctx, p)], strong = [];
-    for (const i of fourCells(ctx, p)) {
-      ctx.side = p;
-      place(ctx, i);
-      if (fiveCells(ctx, p).size >= 2) strong.push(i);
-      remove(ctx, i);
-    }
-    return { five, strong };
-  }
-
   GP.defineEngine('gomoku', A, {
-    dangerCells,
     /*
      * 1. A forced win by continuous fours beats everything.
      * 2. Otherwise run the normal search, then make sure the chosen move

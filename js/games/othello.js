@@ -26,7 +26,7 @@
       const canTap = v.editing || (legal.has(i) && v.canPlay);
       const cell = h('button', {
         type: 'button',
-        class: 'oth-cell' + (legal.has(i) && !v.editing ? ' legal' : '') + (i === hint ? ' hint' : '') + (v.threats && v.threats.cells.includes(i) ? ' threat' : ''),
+        class: 'oth-cell' + (legal.has(i) && !v.editing ? ' legal' : '') + (i === hint ? ' hint' : ''),
         'aria-label': label(i),
         onclick: canTap ? () => (v.editing ? v.onEdit(i) : v.onMove(i)) : null,
         onmouseenter: legal.has(i) && v.canPlay ? () => preview(i, true) : null,
@@ -59,12 +59,6 @@
       const corner = [0, 7, 56, 63].includes(m);
       return (corner ? 'takes a corner, ' : '') + 'flips ' + GP.plural(n, 'disc');
     },
-    threats(s, me) {
-      // Corners your opponent could take on their next turn if you don't act.
-      const opp = Object.assign({}, s, { turn: 1 - me });
-      const corners = [0, 7, 56, 63].filter((i) => E.flipsFor(opp, i).length);
-      return corners.length ? { cells: corners, text: 'They can take the corner' + (corners.length > 1 ? 's at ' : ' at ') + corners.map(label).join(', ') } : null;
-    },
     evalScale: 300,
     render,
     onPlayed: (game, m) => GP.sound.play(m === E.PASS ? 'click' : 'flip'),
@@ -90,7 +84,7 @@
     help: `<p>Place a disc so it traps a line of your opponent's discs between two of yours. They flip to your color. Most discs at the end wins. (GamePigeon calls it Reversi.)</p>
       <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
       <li>Dots show where you can play. Point at one to see what it flips.</li>
-      <li>Corners can't be flipped, so they're worth a lot. Red shows a corner they can grab.</li></ul>`,
+      <li>Corners can't be flipped, so they're worth a lot.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });
 })();

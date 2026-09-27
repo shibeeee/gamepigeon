@@ -31,7 +31,6 @@
     const dests = sel ? legal.filter((m) => m.startsWith(sel)).map((m) => m.slice(2, 4)) : [];
     const last = s.last ? [s.last.slice(0, 2), s.last.slice(2, 4)] : [];
     const hint = v.hint && typeof v.hint.move === 'string' ? [v.hint.move.slice(0, 2), v.hint.move.slice(2, 4)] : [];
-    const threats = new Set(v.threats ? v.threats.cells : []);
     const checkSq = g.in_check() ? findKing(board, g.turn()) : null;
 
     const grid = h('div', { class: 'chess' + (flip ? ' flipped' : '') });
@@ -45,7 +44,6 @@
         if (name === sel) cls.push('sel');
         if (dests.includes(name)) cls.push(p ? 'capture' : 'dest');
         if (name === checkSq) cls.push('check');
-        if (threats.has(name)) cls.push('threat');
         const cell = h('button', { type: 'button', class: cls.join(' '), 'aria-label': name + (p ? ' ' + (p.color === 'w' ? 'white ' : 'black ') + NAMES[p.type] : ''),
           dataset: { sq: name },
           // Keyboard users (Enter/Space) still get a click; pointers are handled by the board.
@@ -268,29 +266,6 @@
         } },
       ]);
     } }),
-    threats(s, me) {
-      // Your pieces that are attacked and not defended enough (simple check: attacked by a cheaper piece or undefended).
-      const g = E.game(s);
-      if (!g) return null;
-      const myColor = me === 0 ? 'w' : 'b';
-      const fen = E.fenOf(Object.assign({}, s, { turn: 1 - me }));
-      const opp = new window.Chess();
-      if (!opp.load(fen)) return null;
-      const hanging = new Set();
-      for (const mv of opp.moves({ verbose: true })) {
-        if (!mv.captured) continue;
-        const victim = g.get(mv.to);
-        if (!victim || victim.color !== myColor) continue;
-        const gain = VALUES[mv.captured] - VALUES[mv.piece];
-        // defended? try the capture and see if we can recapture
-        const t = new window.Chess(fen);
-        t.move(mv);
-        const recapture = t.moves({ verbose: true }).some((x) => x.to === mv.to);
-        if (!recapture || gain > 0) hanging.add(mv.to);
-      }
-      if (!hanging.size) return null;
-      return { cells: [...hanging], text: 'Your piece' + (hanging.size > 1 ? 's on ' : ' on ') + [...hanging].join(', ') + (hanging.size > 1 ? ' are' : ' is') + ' under attack' };
-    },
   };
 
   GP.registerGame({
@@ -302,7 +277,7 @@
     help: `<p>Regular chess. Your coach is Stockfish, one of the strongest chess programs there is.</p>
       <ul><li>Drag a piece to move it, or tap it and then tap where it goes.</li>
       <li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
-      <li>The green arrow is the best move. Red squares are your pieces that can be taken for free.</li>
+      <li>The green arrow is the best move.</li>
       <li>Tap <b>Edit</b> to set up any position, or paste a FEN.</li>
       <li>The first time, chess downloads about 7 MB.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),

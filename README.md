@@ -37,9 +37,6 @@ installed, works offline once loaded, and saves everything automatically.
 - **Coach bar** under every board: the best move, why it's good ("blocks
   their win", "takes a corner, flips 5 discs", "lands in the store for
   another turn") and a **Play it** button.
-- **Threat warnings** in red: a column that would lose, an open three in
-  Gomoku, a checker that can be jumped, a pit that can be captured, a chess
-  piece hanging.
 - **Game review.** After a game, *Review game* marks blunders (??), mistakes
   (?) and inaccuracies (?!) and shows the better move.
 - **Practice mode** against the computer at four strengths, with your record

@@ -28,7 +28,7 @@
       const p = s.b[i];
       const cell = h('button', {
         type: 'button',
-        class: 'ttt-cell' + (win.has(i) ? ' win' : '') + (v.hint && v.hint.move === i ? ' hint' : '') + (v.threats && v.threats.cells.includes(i) ? ' threat' : ''),
+        class: 'ttt-cell' + (win.has(i) ? ' win' : '') + (v.hint && v.hint.move === i ? ' hint' : ''),
         'aria-label': 'Square ' + (i + 1),
         onclick: v.editing ? () => v.onEdit(i) : legal.has(i) && v.canPlay ? () => v.onMove(i) : null,
       });
@@ -50,15 +50,6 @@
     moveLabel: (m) => ['Top left', 'Top', 'Top right', 'Left', 'Center', 'Right', 'Bottom left', 'Bottom', 'Bottom right'][m],
     render,
     explain: GP.explainPlacement,
-    threats(s, me, E) {
-      const cells = [];
-      for (let i = 0; i < 9; i++) {
-        if (s.b[i] >= 0) continue;
-        const r = E.result(E.apply(Object.assign({}, s, { turn: 1 - me }), i));
-        if (r && r.winner === 1 - me) cells.push(i);
-      }
-      return cells.length ? { cells, text: 'They win next turn unless you block' + (cells.length > 1 ? ' (two threats!)' : '') } : null;
-    },
     editTools: [
       { value: 0, label: 'X', swatch: '#ff4f93' },
       { value: 1, label: 'O', swatch: '#2f7bff' },

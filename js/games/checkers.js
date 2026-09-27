@@ -30,7 +30,6 @@
     const movable = new Set(legal.map((x) => x.path[0]));
     const hintPath = v.hint && typeof v.hint.move === 'string' ? E.decode(v.hint.move).path : [];
     const last = s.last ? E.decode(s.last).path : [];
-    const threats = new Set(v.threats ? v.threats.cells : []);
 
     const board = h('div', { class: 'ck' + (flip ? ' flipped' : '') });
     for (let rr = 0; rr < 8; rr++) for (let cc = 0; cc < 8; cc++) {
@@ -42,7 +41,6 @@
       if (picked.includes(i)) cls.push('sel');
       if (nextSquares.has(i)) cls.push('dest');
       if (!picked.length && movable.has(i) && v.canPlay) cls.push('movable');
-      if (threats.has(i)) cls.push('threat');
       const cell = h('button', { type: 'button', class: cls.join(' '), disabled: !dark || null, 'aria-label': name(i),
         onclick: dark ? () => click(v, i, legal, matching, nextSquares, movable) : null });
       const p = s.b[i];
@@ -93,18 +91,6 @@
       const to = path[path.length - 1], v = s.b[path[0]];
       if (!E.isKing(v) && (to >> 3) === (s.turn === 0 ? 0 : 7)) bits.push('crowns a king');
       return bits.join(', ') || null;
-    },
-    threats(s, me) {
-      // Your pieces the opponent could jump next turn.
-      const opp = Object.assign({}, s, { turn: 1 - me });
-      const cells = new Set();
-      for (const m of E.legal(opp)) {
-        const { path, jump } = E.decode(m);
-        if (!jump) continue;
-        for (let k = 0; k + 1 < path.length; k++) cells.add((path[k] + path[k + 1]) >> 1);
-      }
-      if (!cells.size) return null;
-      return { cells: [...cells], text: GP.plural(cells.size, 'piece') + ' of yours can be jumped next turn' };
     },
     editTools: [
       { value: 0, label: 'Red', swatch: '#e53935' },

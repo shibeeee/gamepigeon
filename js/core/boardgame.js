@@ -304,7 +304,6 @@
         game: this,
         state: s,
         result: res,
-        threats: this.threats(),
         legal: res || this.editing ? [] : this.engine.legal(s),
         hint,
         editing: this.editing,
@@ -339,13 +338,6 @@
           el.appendChild(button('Pass', { kind: 'primary', class: 'btn-sm', onclick: () => this.play(this.cfg.passMove) }));
         }
       }
-    }
-
-    /* Danger on your turn: cells the game wants flagged, with a short warning. */
-    threats() {
-      const s = this.state;
-      if (!this.cfg.threats || this.editing || this.engine.result(s) || s.turn !== this.me) return null;
-      try { return this.cfg.threats(s, this.me, this.engine); } catch (e) { return null; }
     }
 
     /* The opponent's most likely moves (best first), for one-tap entry. */
@@ -391,8 +383,6 @@
       const ins = this.insight();
       const s = this.state;
       if (this.editing || this.engine.result(s)) return;
-      const th = this.threats();
-      const warn = th && th.text ? h('small', { class: 'warn-line' }, 'Watch out: ' + th.text) : null;
       const likely = this.likelyMoves();
       if (likely.length && s.turn !== this.me) {
         slot.appendChild(h('div', { class: 'coach likely' }, GP.icon('bot'),
@@ -403,15 +393,14 @@
         return;
       }
       if (!ins) {
-        if (warn) slot.appendChild(h('div', { class: 'coach warn' }, h('span', { class: 'warn-icon' }, '!'), h('span', { class: 'coach-text' }, h('b', null, 'Watch out'), h('small', null, th.text))));
-        else if (this.thinking && !(this.mode === 'ai' && s.turn !== this.me)) slot.appendChild(h('div', { class: 'coach thinking' }, GP.icon('bulb'), h('span', null, 'Thinking'), h('span', { class: 'dots' }, h('i'), h('i'), h('i'))));
+        if (this.thinking && !(this.mode === 'ai' && s.turn !== this.me)) slot.appendChild(h('div', { class: 'coach thinking' }, GP.icon('bulb'), h('span', null, 'Thinking'), h('span', { class: 'dots' }, h('i'), h('i'), h('i'))));
         return;
       }
       const canPlay = !(this.mode === 'ai' && s.turn !== this.me);
-      slot.appendChild(h('div', { class: 'coach' + (warn ? ' warn' : ins.pct >= 100 ? ' good' : ins.pct <= 0 ? ' bad' : '') },
-        warn ? h('span', { class: 'warn-icon' }, '!') : GP.icon('bulb'),
+      slot.appendChild(h('div', { class: 'coach' + (ins.pct >= 100 ? ' good' : ins.pct <= 0 ? ' bad' : '') },
+        GP.icon('bulb'),
         h('span', { class: 'coach-text' }, h('b', null, (ins.mine ? 'Best move: ' : 'Their best: ') + ins.label),
-          warn || h('small', null, [ins.why, ins.verdict].filter(Boolean).join(' · '))),
+          h('small', null, [ins.why, ins.verdict].filter(Boolean).join(' · '))),
         canPlay ? button('Play it', { kind: 'primary', class: 'btn-sm', onclick: () => this.play(ins.res.move) }) : null));
     }
 

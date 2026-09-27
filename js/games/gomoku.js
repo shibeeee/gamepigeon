@@ -50,7 +50,6 @@
         if (i === s.last) svg.appendChild(h('svg:circle', { cx: x, cy: y, r: 0.12, class: 'gmk-last' }));
       }
       if (v.hint && v.hint.move === i) svg.appendChild(h('svg:circle', { cx: x, cy: y, r: 0.42, class: 'gmk-hint' }));
-      if (v.threats && v.threats.cells.includes(i)) svg.appendChild(h('svg:circle', { cx: x, cy: y, r: 0.3, class: 'gmk-threat' }));
       const clickable = v.editing || (legal.has(i) && v.canPlay);
       const hit = h('svg:rect', { x: x - 0.5, y: y - 0.5, width: 1, height: 1, class: 'gmk-hit' + (clickable && p < 0 ? ' playable s' + s.turn : '') });
       if (clickable) hit.addEventListener('click', () => (v.editing ? v.onEdit(i) : v.onMove(i)));
@@ -73,12 +72,6 @@
     }],
     render,
     explain: GP.explainPlacement,
-    threats(s, me, E) {
-      const d = E.dangerCells(s, 1 - me);
-      if (d.five.length) return { cells: d.five, text: 'They have four in a row: block ' + d.five.map((i) => label(i, s)).join(' or ') + ' now' };
-      if (d.strong.length) return { cells: d.strong, text: 'They can make an unstoppable four at ' + d.strong.map((i) => label(i, s)).join(', ') };
-      return null;
-    },
     editTools: [
       { value: 0, label: 'Black', swatch: '#1b1b1f' },
       { value: 1, label: 'White', swatch: '#f4f4f4' },
@@ -99,7 +92,6 @@
     color: '#c98a3a',
     help: `<p>Take turns placing stones. First to get five in a row wins. Black goes first.</p>
       <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
-      <li>Red circles show where they can win or make a four you can't stop. Block those first.</li>
       <li>Joining a game already going? Tap <b>Edit</b> and copy the board.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });

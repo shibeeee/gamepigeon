@@ -86,7 +86,7 @@
       const isHint = v.hint && s.turn === side && v.hint.move === k;
       return slotEl(slot, p[slot], false, {
         aria: (side === me ? 'Your' : 'Opponent') + ' pit ' + (k + 1),
-        cls: (mine && v.canPlay ? ' playable' : '') + (isHint ? ' hint' : '') + (frame && frame.cur === slot ? ' cur' : '') + (v.threats && v.threats.cells.includes(slot) ? ' threat' : '') + (touched.has(slot) ? ' bump' : '') + (v.animate && E.pitIndex(v.animate.from.turn, v.animate.move) === slot ? ' source' : ''),
+        cls: (mine && v.canPlay ? ' playable' : '') + (isHint ? ' hint' : '') + (frame && frame.cur === slot ? ' cur' : '') + (touched.has(slot) ? ' bump' : '') + (v.animate && E.pitIndex(v.animate.from.turn, v.animate.move) === slot ? ' source' : ''),
         delay: touched.has(slot) ? touched.get(slot) * 70 : null,
         num: k + 1,
         upright,
@@ -165,23 +165,6 @@
         choices: ['1-4', '2-6', '3-8', '1-10'].map((r) => ({ value: r, label: r.replace('-', ' and ') })),
       }],
       render,
-      threats(s, me) {
-        if (s.mode !== 'capture') return null;
-        // Your pits the opponent could capture on their next move.
-        const opp = Object.assign({}, s, { turn: 1 - me });
-        const hit = new Map();
-        for (let k = 0; k < 6; k++) {
-          if (!s.pits[E.pitIndex(1 - me, k)]) continue;
-          const after = E.apply(opp, k).pits;
-          for (let j = 0; j < 6; j++) {
-            const i = E.pitIndex(me, j);
-            if (s.pits[i] > 0 && after[i] === 0) hit.set(i, Math.max(hit.get(i) || 0, s.pits[i]));
-          }
-        }
-        if (!hit.size) return null;
-        const total = Math.max(...hit.values());
-        return { cells: [...hit.keys()], text: 'They can capture up to ' + GP.plural(total, 'pebble') + ' from ' + [...hit.keys()].map((i) => 'pit ' + (i % 7 + 1)).join(', ') };
-      },
       explain(s, k) {
         const o = E.outcome(s, k), bits = [];
         if (o.extra) bits.push('lands in the store for another turn');
