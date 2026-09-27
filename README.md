@@ -48,11 +48,8 @@ installed, works offline once loaded, and saves everything automatically.
 Every push to the default branch runs the tests and republishes the site
 (the `Test and publish website` workflow copies the app to the `gh-pages`
 branch, which GitHub Pages serves). To publish a release with a downloadable
-zip, push a version tag:
-
-```sh
-git tag v1.0.1 && git push origin v1.0.1
-```
+zip, open the **Actions** tab, pick **Release**, click **Run workflow** and
+type a version like `v1.0.1` (or push a tag with that name).
 
 **On your computer:**
 

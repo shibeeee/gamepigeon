@@ -1,9 +1,15 @@
-# Push a tag like v1.0.0 to publish a GitHub Release with a downloadable zip.
+# Publishes a GitHub Release with a downloadable zip. Either push a tag like
+# v1.0.1, or run this workflow from the Actions tab and type a version.
 name: Release
 
 on:
   push:
     tags: ['v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: Version to release, like v1.0.1
+        required: true
 
 permissions:
   contents: write
@@ -11,6 +17,8 @@ permissions:
 jobs:
   release:
     runs-on: ubuntu-latest
+    env:
+      VERSION: ${{ inputs.version || github.ref_name }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -21,10 +29,10 @@ jobs:
         run: |
           mkdir -p dist/pigeon-pal
           cp -r index.html css js data icons manifest.webmanifest sw.js README.md dist/pigeon-pal/
-          cd dist && zip -qr "pigeon-pal-${GITHUB_REF_NAME}.zip" pigeon-pal
+          cd dist && zip -qr "pigeon-pal-${VERSION}.zip" pigeon-pal
       - name: Publish the release
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release create "$GITHUB_REF_NAME" "dist/pigeon-pal-${GITHUB_REF_NAME}.zip" \
-            --title "Pigeon Pal ${GITHUB_REF_NAME}" --notes-file .github/RELEASE_NOTES.md
+          gh release create "$VERSION" "dist/pigeon-pal-${VERSION}.zip" --target "$GITHUB_SHA" \
+            --title "Pigeon Pal ${VERSION}" --notes-file .github/RELEASE_NOTES.md
