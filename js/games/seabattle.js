@@ -91,7 +91,9 @@
     function render() {
       closePopover();
       const n = st.size;
-      const a = SB.analyze(n, st.cells, st.remaining);
+      // Simulated fleets give real chances; the counting method is the fallback.
+      const sim = Object.values(st.remaining).some((x) => x > 0) ? SB.simulate(n, st.cells, st.remaining, 160) : null;
+      const a = sim ? { score: sim.prob, max: sim.max, best: sim.best, blocked: sim.blocked } : SB.analyze(n, st.cells, st.remaining);
       const best = new Set(a.best);
       // Stretch the colors between the weakest and strongest open cells so differences stand out.
       let min = Infinity;
@@ -116,7 +118,7 @@
             style: st.heat && heat > 0 ? { '--heat': heat.toFixed(3) } : null,
             onclick: (e) => { e.stopPropagation(); openPopover(i, cell); },
           });
-          if (st.heat && st.numbers && v === UNKNOWN && !a.blocked[i]) cell.appendChild(h('small', null, Math.round((a.score[i] / a.max) * 100)));
+          if (st.heat && st.numbers && v === UNKNOWN && !a.blocked[i]) cell.appendChild(h('small', null, sim ? Math.round(a.score[i] * 100) + '%' : Math.round((a.score[i] / a.max) * 100)));
           grid.appendChild(cell);
         }
       }
@@ -130,7 +132,8 @@
       statusEl.appendChild(GP.icon('target'));
       statusEl.appendChild(h('span', { class: 'status-text' }, done
         ? 'Fleet destroyed! You win.'
-        : a.best.length ? 'Best shot: ' + a.best.slice(0, 3).map(col).join(', ') + (a.best.length > 3 ? ' (and ' + (a.best.length - 3) + ' more)' : '') : 'Tap a cell to record a shot'));
+        : a.best.length ? 'Best shot: ' + a.best.slice(0, 3).map(col).join(', ') + (a.best.length > 3 ? ' (and ' + (a.best.length - 3) + ' more)' : '')
+          + (sim ? ' · ' + Math.round(sim.max * 100) + '% chance of a ship' : '') : 'Tap a cell to record a shot'));
 
       // Side panel
       GP.clear(side);
@@ -158,7 +161,7 @@
         h('div', { class: 'field' }, h('label', null, 'Size'),
           GP.segmented([8, 9, 10].map((x) => ({ value: x, label: x + ' × ' + x })), st.size, (v) => { confirmReset(v); setTimeout(render, 0); })),
         GP.toggle('Heat map', st.heat, (v) => { st.heat = v; save(); render(); }, 'Brighter means more likely to hide a ship'),
-        GP.toggle('Show scores', st.numbers, (v) => { st.numbers = v; save(); render(); }, '0 to 100, relative to the best cell')));
+        GP.toggle('Show chances', st.numbers, (v) => { st.numbers = v; save(); render(); }, 'Chance that each cell hides a ship, from thousands of simulated fleets')));
     }
 
     const onDoc = (e) => { if (popover && !popover.contains(e.target)) closePopover(); };

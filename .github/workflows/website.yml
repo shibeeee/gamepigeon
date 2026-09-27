@@ -30,7 +30,8 @@ jobs:
       - name: Copy the site into gh-pages
         run: |
           mkdir /tmp/site
-          cp -r index.html css js data icons manifest.webmanifest sw.js /tmp/site/
+          cp -r index.html css js data icons vendor manifest.webmanifest sw.js LICENSE THIRD_PARTY.md /tmp/site/
+          rm -f /tmp/site/data/c4book-*.js
           touch /tmp/site/.nojekyll
           cd /tmp/site
           git init -q -b gh-pages

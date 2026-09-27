@@ -1,12 +1,13 @@
 /*
  * Controller shared by every turn-based game (Connect 4, Othello, Gomoku,
- * Tic Tac Toe, Mancala). It owns the move history, undo/redo, the AI
+ * Tic Tac Toe, Mancala, Checkers, Dots and Boxes, Filler, Chess). It owns the move history, undo/redo, the AI
  * opponent, hints, the board editor, autosave and the side panel. Each game
  * only supplies its board renderer and a few labels.
  *
  * Two ways to use it:
- *   Helper   - you are playing someone on GamePigeon. Enter both players'
- *              moves and the app shows you the best reply.
+ *   Helper   - you are playing someone on GamePigeon. Enter your opponent's
+ *              moves; the app shows (or plays, with "Bot plays my moves")
+ *              the best reply and suggests their likely moves for quick entry.
  *   Practice - the computer plays the other side.
  */
 (function () {
@@ -25,6 +26,7 @@
       this.editing = false;
       this.editTool = cfg.editTools ? cfg.editTools[0].value : null;
       this.animate = null;
+      this.review = null;
       this.load();
       this.build();
       this.onKey = this.onKey.bind(this);
@@ -51,6 +53,7 @@
         this.first = 0;
         this.mode = 'helper';
         this.autoHint = true;
+        this.autoMe = false;
         this.strength = GP.settings.strength;
         this.options = this.defaultOptions();
         this.reset(true);
@@ -58,7 +61,7 @@
     }
     save() {
       GP.store.set('game:' + this.cfg.id, {
-        v: 1, me: this.me, first: this.first, mode: this.mode, autoHint: this.autoHint, strength: this.strength,
+        v: 1, me: this.me, first: this.first, mode: this.mode, autoHint: this.autoHint, autoMe: this.autoMe, strength: this.strength,
         options: this.options, history: this.history, moves: this.moves, idx: this.idx, recorded: this.recorded,
         inProgress: !this.engine.result(this.state) && this.idx > 0,
         updated: Date.now(),
@@ -71,6 +74,7 @@
       this.idx = 0;
       this.recorded = false;
       this.editIdx = -1;
+      this.review = null;
       if (!silent) {
         GP.sound.play('pop');
         this.update();
@@ -95,6 +99,7 @@
       this.idx++;
       this.recorded = this.recorded && this.idx > 0;
       this.animate = { move, from: s };
+      this.review = null;
       if (this.cfg.onPlayed) this.cfg.onPlayed(this, move, s, next);
       else GP.sound.play('place');
       GP.buzz(8);
@@ -139,12 +144,19 @@
       this.thinking = false;
       if (!this.editing) this.save();
       if (res) this.finish(res);
-      else if (!this.editing) {
-        if (this.mode === 'ai' && s.turn !== this.me) this.think(false, token);
-        else if (this.autoHint && s.turn === this.me) this.analyze(false, token);
+      else if (!this.editing && !(this.review && this.review.running)) {
+        if (this.botTurn()) this.think(false, token);
+        else if (this.autoHint) this.analyze(false, token); // your best move, or their likely ones
       }
       this.render();
       this.animate = null;
+    }
+
+    /* True when the bot should move on its own right now. */
+    botTurn() {
+      const s = this.state;
+      if (this.mode === 'ai') return s.turn !== this.me;
+      return this.autoMe && s.turn === this.me;
     }
 
     think(forced, token) {
@@ -152,7 +164,7 @@
       this.thinking = true;
       this.renderStatus();
       const started = Date.now();
-      GP.ai.search(this.cfg.engine, this.state, this.mode === 'ai' ? this.strength : 'normal').then((r) => {
+      GP.ai.search(this.cfg.engine, this.state, this.strength).then((r) => {
         if (token !== this.token || !r) return;
         const wait = Math.max(0, 350 - (Date.now() - started)); // let the last move's animation finish
         setTimeout(() => { if (token === this.token) this.play(r.move, true); }, wait);
@@ -164,7 +176,7 @@
       const s = this.state;
       this.thinking = true;
       this.renderStatus();
-      GP.ai.search(this.cfg.engine, s, 'normal').then((r) => {
+      GP.ai.search(this.cfg.engine, s, 'normal', 'analyze').then((r) => {
         if (token !== this.token || !r) return;
         this.thinking = false;
         this.analysis = { side: s.turn, res: r, explicit };
@@ -243,13 +255,13 @@
 
     build() {
       const cfg = this.cfg;
-      this.statusEl = h('div', { class: 'status' });
-      this.boardEl = h('div', { class: 'board-host ' + cfg.engine });
+      this.statusEl = h('div', { class: 'status', role: 'status', 'aria-live': 'polite' });
+      this.boardEl = h('div', { class: 'board-host bh-' + cfg.engine });
       this.controlsEl = h('div', { class: 'controls' });
       this.panelEl = h('aside', { class: 'panel' });
-      this.root.appendChild(h('div', { class: 'game-layout' },
-        h('section', { class: 'play-area' }, this.statusEl, this.boardEl, this.controlsEl),
-        this.panelEl));
+      const area = h('section', { class: 'play-area' }, this.statusEl, this.boardEl, this.controlsEl);
+      this.root.appendChild(h('div', { class: 'game-layout' }, area, this.panelEl));
+      this.bindSwipe(area);
     }
 
     render() {
@@ -268,6 +280,7 @@
         game: this,
         state: s,
         result: res,
+        threats: this.threats(),
         legal: res || this.editing ? [] : this.engine.legal(s),
         hint,
         editing: this.editing,
@@ -289,8 +302,9 @@
         else { text = (this.mode === 'ai' ? 'The computer wins' : 'Your opponent wins'); cls = 'lose'; }
         if (this.cfg.resultText) text += ' ' + this.cfg.resultText(res, this);
       } else if (this.thinking && this.mode === 'ai' && s.turn !== this.me) { text = 'Computer is thinking'; cls = 'thinking'; }
+      else if (this.thinking && this.botTurn()) { text = 'Bot is picking your move'; cls = 'thinking'; }
       else if (s.turn === this.me) text = this.cfg.yourTurnText ? this.cfg.yourTurnText(this) : 'Your turn';
-      else text = this.mode === 'ai' ? "Computer's turn" : "Opponent's turn: enter their move";
+      else text = this.mode === 'ai' ? "Computer's turn" : "Their turn: enter the move they made";
       el.className = 'status ' + cls;
       el.appendChild(this.cfg.swatch(res ? (res.winner == null ? s.turn : res.winner) : s.turn));
       el.appendChild(h('span', { class: 'status-text' }, text));
@@ -303,9 +317,32 @@
       }
     }
 
+    /* Danger on your turn: cells the game wants flagged, with a short warning. */
+    threats() {
+      const s = this.state;
+      if (!this.cfg.threats || this.editing || this.engine.result(s) || s.turn !== this.me) return null;
+      try { return this.cfg.threats(s, this.me, this.engine); } catch (e) { return null; }
+    }
+
+    /* The opponent's most likely moves (best first), for one-tap entry. */
+    likelyMoves() {
+      const a = this.analysis;
+      if (!a || a.side === this.me || this.mode !== 'helper') return [];
+      const sc = a.res.scores || {};
+      const legal = this.engine.legal(this.state).map(String);
+      // Best score first; ties keep the engine's natural order (e.g. center columns first).
+      let list = Object.keys(sc).filter((m) => legal.includes(m))
+        .sort((x, y) => (sc[y] - sc[x]) || (legal.indexOf(x) - legal.indexOf(y)));
+      list = [String(a.res.move)].concat(list.filter((m) => m !== String(a.res.move)));
+      // Restore the original move type (numbers for most games, strings for chess/checkers).
+      const real = this.engine.legal(this.state);
+      return list.slice(0, 3).map((m) => real.find((x) => String(x) === String(m))).filter((m) => m != null);
+    }
+
     /* Everything the UI needs to present the current analysis, or null. */
     insight() {
       if (!this.analysis || this.engine.result(this.state)) return null;
+      if (this.analysis.side !== this.me && this.mode === 'helper' && !this.analysis.explicit) return null;
       const cfg = this.cfg, r = this.analysis.res, s = this.state;
       const sc = this.analysis.side === this.me ? r.score : -r.score;
       const pct = Math.abs(sc) >= GP.DECISIVE ? (sc > 0 ? 100 : 0) : 50 + 50 * Math.tanh(sc / (cfg.evalScale || 400));
@@ -327,6 +364,17 @@
       const ins = this.insight();
       const s = this.state;
       if (this.editing || this.engine.result(s)) return;
+      const th = this.threats();
+      if (th && th.text) el.appendChild(h('div', { class: 'coach warn' }, h('span', { class: 'warn-icon' }, '!'), h('span', { class: 'coach-text' }, h('b', null, 'Watch out'), h('small', null, th.text))));
+      const likely = this.likelyMoves();
+      if (likely.length && s.turn !== this.me) {
+        el.appendChild(h('div', { class: 'coach likely' }, GP.icon('bot'),
+          h('span', { class: 'coach-text' }, h('b', null, 'What did they play?'), h('small', null, 'Tap the board, or pick a likely move')),
+          h('span', { class: 'likely-moves' }, likely.map((m, k) => button(this.cfg.moveLabel(m, s), {
+            kind: k === 0 ? 'primary' : null, class: 'btn-sm', title: k === 0 ? 'Their best move' : 'Another strong move', onclick: () => this.play(m),
+          })))));
+        return;
+      }
       if (!ins) {
         if (this.thinking && !(this.mode === 'ai' && s.turn !== this.me)) el.appendChild(h('div', { class: 'coach thinking' }, GP.icon('bulb'), h('span', null, 'Finding the best move'), h('span', { class: 'dots' }, h('i'), h('i'), h('i'))));
         return;
@@ -342,7 +390,7 @@
     renderControls() {
       const el = GP.clear(this.controlsEl);
       if (this.editing) {
-        const tools = segmented(this.cfg.editTools.map((t) => ({ value: t.value, label: t.label, swatch: t.swatch })), this.editTool, (v) => (this.editTool = v), 'seg-tools');
+        const tools = segmented(this.cfg.editTools.map((t) => ({ value: t.value, label: t.label, swatch: t.swatch, cls: t.cls })), this.editTool, (v) => (this.editTool = v), 'seg-tools');
         const turn = segmented(this.cfg.sides.map((sd, i) => ({ value: i, label: sd.name + ' to move' })), this.state.turn, (v) => {
           this.commitEdit(Object.assign({}, this.state, { turn: v }));
         });
@@ -353,6 +401,7 @@
               const fresh = this.engine.initial(this.initOptions(this.state.turn));
               this.commitEdit(this.cfg.clearBoard ? this.cfg.clearBoard(fresh) : fresh);
             } }),
+            this.cfg.extraEdit ? this.cfg.extraEdit(this) : null,
             button('Done', { icon: 'check', kind: 'primary', onclick: () => this.toggleEdit() })));
         return;
       }
@@ -362,7 +411,7 @@
         button('Undo', { icon: 'undo', onclick: () => this.undo(), disabled: this.idx === 0, title: 'Undo (Ctrl+Z)' }),
         button('Redo', { icon: 'redo', onclick: () => this.redo(), disabled: this.idx >= this.history.length - 1, title: 'Redo (Ctrl+Y)' }),
         button('Hint', { icon: 'bulb', onclick: () => this.hint(), disabled: over, title: 'Show the best move (H)' }),
-        button('AI move', { icon: 'bot', onclick: () => this.aiMove(), disabled: over, title: 'Let the AI play this turn (A)' }),
+        button('Bot move', { icon: 'bot', onclick: () => this.aiMove(), disabled: over, title: 'Let the bot play this turn (A)' }),
         this.cfg.edit ? button('Edit', { icon: 'edit', onclick: () => this.toggleEdit(), title: 'Set up any position (E)' }) : null,
         button('New', { icon: 'refresh', kind: 'primary', onclick: () => this.newGame(), title: 'New game' })));
     }
@@ -384,6 +433,8 @@
           : 'Practice against the computer. Your record is saved on the home screen.'),
         h('div', { class: 'field' }, h('label', null, 'You play as'),
           segmented(sideOpts, this.me, (v) => { this.me = v; this.recorded = true; this.update(); })),
+        this.mode === 'helper' ? toggle('Bot plays my moves', this.autoMe, (v) => { this.autoMe = v; this.update(); },
+          'You only enter their moves; copy the bot\'s move into GamePigeon') : null,
         cfg.fixedFirst ? null : h('div', { class: 'field' }, h('label', null, 'Who goes first'),
           segmented(sideOpts, this.first, (v) => {
             this.first = v;
@@ -403,11 +454,11 @@
         h('p', { class: 'eval-text' }, evalText, ins && ins.why ? h('span', { class: 'why' }, ' (' + ins.why + ')') : null,
           r ? h('small', null, ' Looked ' + r.depth + ' moves ahead.') : null),
         toggle('Show my best move automatically', this.autoHint, (v) => { this.autoHint = v; this.update(); }),
-        this.mode === 'ai' ? h('div', { class: 'field' }, h('label', null, 'Computer strength'),
+        h('div', { class: 'field' }, h('label', null, this.mode === 'ai' ? 'Computer strength' : 'Bot strength'),
           segmented([
             { value: 'easy', label: 'Easy' }, { value: 'normal', label: 'Normal' },
             { value: 'hard', label: 'Hard' }, { value: 'max', label: 'Max' },
-          ], this.strength, (v) => { this.strength = v; this.save(); })) : null));
+          ], this.strength, (v) => { this.strength = v; this.save(); }))));
 
       // Game options
       if (cfg.options && cfg.options.length) {
@@ -424,17 +475,89 @@
 
       // Move list
       const list = h('ol', { class: 'moves' });
+      const marks = (this.review && this.review.marks) || {};
       for (let i = 1; i < this.history.length; i++) {
         const prev = this.history[i - 1], m = this.moves[i];
         const label = m === 'edit' ? 'Board edited' : cfg.moveLabel(m, prev);
+        const mk = marks[i];
         list.appendChild(h('li', { class: i === this.idx ? 'on' : i > this.idx ? 'future' : '', onclick: () => this.jump(i) },
-          h('span', { class: 'n' }, i), m === 'edit' ? GP.icon('edit') : cfg.swatch(prev.turn), h('span', null, label)));
+          h('span', { class: 'n' }, i), m === 'edit' ? GP.icon('edit') : cfg.swatch(prev.turn), h('span', null, label),
+          mk ? h('span', { class: 'mark ' + mk.kind, title: mk.title }, MARK[mk.kind]) : null,
+          mk && mk.better ? h('small', { class: 'better' }, 'better: ' + mk.better) : null));
       }
+      const rv = this.review;
       el.appendChild(h('div', { class: 'card' },
-        h('h3', null, 'Moves', h('button', { class: 'link', onclick: () => this.jump(0), disabled: this.idx === 0 }, 'Start')),
+        h('h3', null, 'Moves',
+          this.history.length > 2 ? h('button', { class: 'link', onclick: () => this.runReview(), disabled: rv && rv.running }, rv && rv.running ? 'Reviewing ' + rv.done + '/' + rv.total : 'Review game') : null,
+          h('button', { class: 'link', onclick: () => this.jump(0), disabled: this.idx === 0 }, 'Start')),
+        rv && !rv.running ? h('p', { class: 'review-sum' }, rv.summary) : null,
         this.history.length > 1 ? list : h('p', { class: 'hint-text' }, 'No moves yet. Tap the board to play.')));
       const on = list.querySelector('.on');
       if (on) list.scrollTop = on.offsetTop - list.clientHeight / 2;
+    }
+
+    /*
+     * Looks back over the game: for every move, how much worse it was than
+     * the best move available. Marks blunders (??), mistakes (?) and
+     * inaccuracies (?!), and notes the better move.
+     */
+    async runReview() {
+      GP.ai.cancel();
+      this.token++;
+      const cfg = this.cfg, E = this.engine, hist = this.history.slice(), moves = this.moves.slice();
+      const unit = cfg.evalUnit || 100;
+      const rv = (this.review = { running: true, done: 0, total: hist.length - 1, marks: {} });
+      this.render();
+      const best = []; // best score for the side to move at each position (their view), plus the search result
+      for (let i = 0; i < hist.length; i++) {
+        if (this.review !== rv) return; // a new move cancelled the review
+        const res = E.result(hist[i]);
+        if (res) { best[i] = { score: res.winner == null ? 0 : res.winner === hist[i].turn ? GP.WIN / 2 : -GP.WIN / 2 }; continue; }
+        let r = null;
+        try { r = await GP.ai.search(cfg.engine, hist[i], 'quick', 'analyze'); } catch (e) { r = null; }
+        best[i] = r || { score: 0 };
+        rv.done = Math.min(i + 1, rv.total);
+        this.renderPanel();
+      }
+      if (this.review !== rv) return;
+      const count = [{ b: 0, m: 0, i: 0 }, { b: 0, m: 0, i: 0 }];
+      for (let i = 1; i < hist.length; i++) {
+        if (moves[i] === 'edit' || !best[i - 1].move && best[i - 1].move !== 0) continue;
+        const mover = hist[i - 1].turn, bestScore = best[i - 1].score;
+        const sc = best[i - 1].scores || {};
+        let played = sc[moves[i]];
+        if (played == null) played = hist[i].turn === mover ? best[i].score : -best[i].score;
+        const loss = bestScore - played;
+        let kind = null;
+        if (bestScore >= GP.DECISIVE && played < GP.DECISIVE) kind = 'blunder';
+        else if (bestScore > -GP.DECISIVE && played <= -GP.DECISIVE) kind = 'blunder';
+        else if (Math.abs(bestScore) < GP.DECISIVE) {
+          if (loss >= 3 * unit) kind = 'blunder';
+          else if (loss >= 1.5 * unit) kind = 'mistake';
+          else if (loss >= 0.6 * unit) kind = 'inaccuracy';
+        }
+        if (!kind && String(moves[i]) === String(best[i - 1].move)) kind = 'best';
+        if (!kind) continue;
+        const better = kind !== 'best' ? cfg.moveLabel(best[i - 1].move, hist[i - 1]) : null;
+        rv.marks[i] = { kind, better, title: kind === 'best' ? 'Best move' : kind[0].toUpperCase() + kind.slice(1) + (better ? '. Better was ' + better : '') };
+        if (kind !== 'best') count[mover][kind[0]]++;
+      }
+      const line = (p) => {
+        const c = count[p], parts = [];
+        if (c.b) parts.push(GP.plural(c.b, 'blunder'));
+        if (c.m) parts.push(GP.plural(c.m, 'mistake'));
+        if (c.i) parts.push(GP.plural(c.i, 'inaccuracy').replace('inaccuracys', 'inaccuracies'));
+        return this.who(p) + ': ' + (parts.join(', ') || 'no mistakes');
+      };
+      rv.summary = line(this.me) + '  ·  ' + line(1 - this.me);
+      rv.running = false;
+      GP.sound.play('hint');
+      this.update();
+    }
+
+    /* Swipe left/right on the play area to undo/redo (phones). */
+    bindSwipe(el) {
+      GP.onSwipe(el, () => { if (!this.editing) this.redo(); }, () => { if (!this.editing) this.undo(); });
     }
 
     destroy() {
@@ -444,6 +567,8 @@
       window.removeEventListener('resize', this.onResize);
     }
   }
+
+  const MARK = { blunder: '??', mistake: '?', inaccuracy: '?!', best: '★' };
 
   GP.BoardGame = BoardGame;
 

@@ -33,6 +33,7 @@
     const overlay = h('svg:svg', { class: 'wh-path', 'aria-hidden': 'true' });
     const side = h('div', { class: 'wh-side' });
     const focusHost = h('div', { class: 'focus-host' });
+    const quickHost = h('div', { class: 'quick-host' });
 
     const layoutSeg = GP.segmented(Object.keys(LAYOUTS).map((k) => ({ value: k, label: LAYOUTS[k].label })), st.layout, (v) => {
       st.layout = v;
@@ -46,8 +47,13 @@
       h('section', { class: 'play-area' },
         h('div', { class: 'toolbar' }, layoutSeg, GP.roundTimer('wordhunt')),
         h('div', { class: 'wh-stage' }, boardHost, overlay),
+        quickHost,
         focusHost,
         h('div', { class: 'btn-row' },
+          GP.button('Screenshot', { icon: 'upload', title: 'Read the letters from a screenshot', onclick: () => {
+            const L = LAYOUTS[st.layout];
+            GP.lettersFromScreenshot({ rows: L.count / L.cols, cols: L.cols, mask: L.maskArr, key: 'wordhunt-' + st.layout, done: (letters) => tiles.setAll(letters) });
+          } }),
           GP.button('Type letters', { icon: 'paste', onclick: () => GP.pasteDialog(LAYOUTS[st.layout].count, (t) => tiles.fill(t, 0)) }),
           GP.button('Random', { icon: 'shuffle', onclick: randomize, title: 'Fill with random letters to practice' }),
           GP.button('Clear', { icon: 'trash', kind: 'ghost', onclick: clearBoard }))),
@@ -73,6 +79,7 @@
         },
       });
       boardHost.appendChild(tiles.el);
+      GP.clear(quickHost).appendChild(GP.quickEntry(L.maskArr ? L.maskArr.filter(Boolean).length : L.count, () => tiles));
       drawPath();
     }
 
@@ -127,6 +134,8 @@
         }),
         h('div', { class: 'field' }, h('label', null, 'Longest word'),
           GP.segmented([6, 8, 10, 12].map((n) => ({ value: n, label: n === 12 ? 'Any' : String(n) })), st.maxLen, (v) => { st.maxLen = v; save(); solve(); })),
+        h('div', { class: 'field' }, h('label', null, 'Order in one-at-a-time view'),
+          GP.segmented([{ value: 'score', label: 'Most points first' }, { value: 'route', label: 'Smooth route' }], st.order || 'score', (v) => { st.order = v; save(); renderFocus(); })),
         GP.toggle('Tick words off as I go', st.autoTick, (v) => { st.autoTick = v; save(); }, 'In one-at-a-time view')));
 
       if (filledCount != null) {
@@ -148,6 +157,35 @@
       renderFocus();
     }
 
+    /*
+     * "Smooth route": after each word, prefer a high-value word that starts
+     * near where your finger just stopped, so you spend less time moving.
+     */
+    let routeCache = null;
+    function ordered() {
+      if ((st.order || 'score') !== 'route') return results;
+      if (routeCache && routeCache.src === results) return routeCache.list;
+      const L = LAYOUTS[st.layout];
+      const pos = (i) => [Math.floor(i / L.cols), i % L.cols];
+      const left = results.slice(0, 120), out = [];
+      let at = null;
+      while (left.length) {
+        let bi = 0, bv = -Infinity;
+        left.forEach((x, k) => {
+          const [r, c] = pos(x.path[0]);
+          const dist = at ? Math.hypot(r - at[0], c - at[1]) : 0;
+          const v = x.score / (1 + 0.35 * dist);
+          if (v > bv) { bv = v; bi = k; }
+        });
+        const pickW = left.splice(bi, 1)[0];
+        out.push(pickW);
+        at = pos(pickW.path[pickW.path.length - 1]);
+      }
+      const list = out.concat(results.slice(120));
+      routeCache = { src: results, list };
+      return list;
+    }
+
     function renderFocus() {
       GP.clear(focusHost);
       if (st.view === 'list' && selected && results.includes(selected)) {
@@ -159,7 +197,7 @@
         return;
       }
       if (st.view !== 'focus' || !results.length) return;
-      const queue = results.filter((x) => !used.has(x.word) || x === selected);
+      const queue = ordered().filter((x) => !used.has(x.word) || x === selected);
       if (!queue.length) {
         focusHost.appendChild(h('div', { class: 'card focus-card' }, h('p', null, 'All done! Every word is ticked off.'),
           GP.button('Start over', { icon: 'refresh', onclick: () => { used.clear(); st.used = []; save(); renderSide(); } })));
@@ -183,12 +221,15 @@
         renderSide();
       };
       const canGoBack = st.autoTick ? ticked.length > 0 : focusIdx > 0;
-      focusHost.appendChild(h('div', { class: 'card focus-card' },
+      const card = h('div', { class: 'card focus-card' },
         h('div', { class: 'focus-word' }, item.word.toUpperCase()),
-        h('div', { class: 'focus-meta' }, GP.fmt(item.score) + ' points · ' + (results.indexOf(item) + 1) + ' of ' + results.length),
+        h('div', { class: 'focus-meta' }, GP.fmt(item.score) + ' points · ' + (queue.indexOf(item) + 1) + ' of ' + queue.length + ' left'),
         h('div', { class: 'btn-row' },
           GP.button('Back', { icon: 'prev', onclick: () => go(-1), disabled: !canGoBack }),
-          GP.button(st.autoTick ? 'Got it, next' : 'Next', { icon: 'next', kind: 'primary', onclick: () => go(1) }))));
+          GP.button(st.autoTick ? 'Got it, next' : 'Next', { icon: 'next', kind: 'primary', onclick: () => go(1) })),
+        h('small', { class: 'swipe-tip' }, 'Swipe left for the next word'));
+      GP.onSwipe(card, () => go(1), () => { if (canGoBack) go(-1); });
+      focusHost.appendChild(card);
     }
 
     function drawPath() {

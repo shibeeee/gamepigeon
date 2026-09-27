@@ -94,6 +94,20 @@
       }
       return extra.reverse().concat(out.reverse());
     },
+    // Extra turns and captures: worth following past the search horizon.
+    noisy(ctx) {
+      if (ctx.over) return [];
+      const out = [];
+      for (let k = 0; k < 6; k++) {
+        const n = ctx.p[pitIndex(ctx.side, k)];
+        if (!n) continue;
+        if (n === 6 - k || n === 19 - k) { out.push(k); continue; }
+        if (ctx.mode !== 'capture' || n >= 13) continue;
+        const land = pitIndex(ctx.side, k) + n; // no wrap past our store for n < 13 - k
+        if (n < 6 - k && ctx.p[land] === 0 && ctx.p[12 - land] > 0) out.push(k);
+      }
+      return out;
+    },
     make(ctx, k) {
       const tok = { p: ctx.p.slice(), side: ctx.side, over: ctx.over };
       const again = sow(ctx.p, ctx.side, k, ctx.mode);
@@ -107,6 +121,16 @@
       ctx.over = tok.over;
     },
     terminal: (ctx) => (ctx.over ? finalScore(ctx.p, ctx.side) : null),
+    // Two independent 32-bit hashes of the pits and side, combined into one exact integer key.
+    hash(ctx) {
+      let a = 2166136261 ^ ctx.side, b = 5381 + ctx.side;
+      const p = ctx.p;
+      for (let i = 0; i < 14; i++) {
+        a = Math.imul(a ^ p[i], 16777619);
+        b = Math.imul(b, 33) ^ (p[i] * 131 + i);
+      }
+      return (a >>> 0) * 2097152 + ((b >>> 0) & 2097151);
+    },
     noMoves: (ctx) => finalScore(ctx.p, ctx.side),
     evaluate(ctx) {
       const p = ctx.p, me = ctx.side, o = 1 - me;

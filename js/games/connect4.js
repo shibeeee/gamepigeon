@@ -5,10 +5,10 @@
   const E = GP.engines.connect4;
   const W = 7, H = 6;
 
-  function columnVerdict(score) {
+  function columnVerdict(score, solved) {
     if (score >= GP.DECISIVE) return { cls: 'good', text: 'Win' };
     if (score <= -GP.DECISIVE) return { cls: 'bad', text: 'Lose' };
-    return { cls: 'mid', text: GP.describeScore(score, 50) };
+    return { cls: 'mid', text: solved ? 'Draw' : GP.describeScore(score, 50) };
   }
 
   function render(host, v) {
@@ -23,7 +23,7 @@
     for (let c = 0; c < W; c++) {
       const col = h('button', {
         type: 'button',
-        class: 'c4-col' + (legal.has(c) && v.canPlay ? ' playable' : '') + (c === hintCol ? ' hint' : '') + (v.editing ? ' editing' : ''),
+        class: 'c4-col' + (legal.has(c) && v.canPlay ? ' playable' : '') + (c === hintCol ? ' hint' : '') + (v.editing ? ' editing' : '') + (v.threats && v.threats.cells.includes(c) ? ' threat' : ''),
         'aria-label': 'Column ' + (c + 1),
         onclick: v.editing ? null : () => v.onMove(c),
       });
@@ -49,7 +49,7 @@
     for (let c = 0; c < W; c++) {
       let chip = h('span', { class: 'c4-num' }, c + 1);
       if (v.hint && v.hint.scores && v.hint.scores[c] != null) {
-        const vd = columnVerdict(v.hint.scores[c]);
+        const vd = columnVerdict(v.hint.scores[c], v.hint.solved);
         chip = h('span', { class: 'c4-num verdict ' + vd.cls + (c === hintCol ? ' best' : ''), title: vd.text }, c + 1, h('small', null, vd.text));
       }
       labels.appendChild(chip);
@@ -68,6 +68,26 @@
     evalUnit: 50,
     render,
     explain: GP.explainPlacement,
+    threats(s, me) {
+      const opp = 1 - me, now = [], below = [];
+      for (let c = 0; c < W; c++) {
+        if (s.b[c] !== -1) continue;
+        // They'd win by playing here themselves
+        const r1 = E.result(E.apply(Object.assign({}, s, { turn: opp }), c));
+        if (r1 && r1.winner === opp) { now.push(c); continue; }
+        // Playing here would let them win on top
+        const mine = E.apply(s, c);
+        if (mine.b[c] === -1) {
+          const r2 = E.result(E.apply(mine, c));
+          if (r2 && r2.winner === opp) below.push(c);
+        }
+      }
+      if (!now.length && !below.length) return null;
+      const txt = [];
+      if (now.length) txt.push('They win at column ' + now.map((c) => c + 1).join(' or ') + ' unless you block');
+      if (below.length) txt.push("Don't play column " + below.map((c) => c + 1).join(' or ') + ': it sets up their win');
+      return { cells: now.concat(below), text: txt.join('. ') };
+    },
     onPlayed: () => {},
     editTools: [
       { value: 0, label: 'Red', swatch: '#f0463c' },

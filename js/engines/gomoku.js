@@ -163,6 +163,59 @@
     },
   };
 
+  /* Empty cells where player p would complete five. */
+  function fiveCells(ctx, p) {
+    const o = 1 - p, out = new Set(), g = ctx.g;
+    const cp = ctx.cnt[p], co = ctx.cnt[o];
+    for (let w = 0; w < g.wins.length; w++) {
+      if (cp[w] !== 4 || co[w] !== 0) continue;
+      for (const i of g.wins[w]) if (ctx.b[i] === -1) out.add(i);
+    }
+    return out;
+  }
+
+  /* Empty cells where player p would make a four (one move from five). */
+  function fourCells(ctx, p) {
+    const o = 1 - p, out = new Set(), g = ctx.g;
+    const cp = ctx.cnt[p], co = ctx.cnt[o];
+    for (let w = 0; w < g.wins.length; w++) {
+      if (cp[w] !== 3 || co[w] !== 0) continue;
+      for (const i of g.wins[w]) if (ctx.b[i] === -1) out.add(i);
+    }
+    return out;
+  }
+
+  /*
+   * Victory by continuous fours: p keeps making fours, each of which the
+   * opponent must block, until p makes two fives at once. Returns the move
+   * sequence for p, or null. Limited by depth and a node budget.
+   */
+  function vcf(ctx, p, depth, budget) {
+    if (depth <= 0 || budget.n-- <= 0) return null;
+    const o = 1 - p;
+    if (fiveCells(ctx, o).size) return null; // opponent would just win
+    for (const i of fourCells(ctx, p)) {
+      ctx.side = p;
+      place(ctx, i);
+      const fives = fiveCells(ctx, p);
+      let line = null;
+      if (fives.size >= 2) line = [i];
+      else if (fives.size === 1) {
+        const block = fives.values().next().value;
+        ctx.side = o;
+        const oppWon = place(ctx, block);
+        if (!oppWon && !fiveCells(ctx, o).size) {
+          const rest = vcf(ctx, p, depth - 1, budget);
+          if (rest) line = [i, block].concat(rest);
+        }
+        remove(ctx, block);
+      }
+      remove(ctx, i);
+      if (line) return line;
+    }
+    return null;
+  }
+
   function findFive(s) {
     const g = geometry(s.n);
     for (const w of g.wins) {
@@ -172,7 +225,52 @@
     return null;
   }
 
+  /* Cells where player p wins now (five) or makes an unstoppable double threat. */
+  function dangerCells(state, p) {
+    const ctx = makeCtx(state);
+    const five = [...fiveCells(ctx, p)], strong = [];
+    for (const i of fourCells(ctx, p)) {
+      ctx.side = p;
+      place(ctx, i);
+      if (fiveCells(ctx, p).size >= 2) strong.push(i);
+      remove(ctx, i);
+    }
+    return { five, strong };
+  }
+
   GP.defineEngine('gomoku', A, {
+    dangerCells,
+    /*
+     * 1. A forced win by continuous fours beats everything.
+     * 2. Otherwise run the normal search, then make sure the chosen move
+     *    doesn't let the opponent start a forced win of their own.
+     */
+    search(state, opts) {
+      opts = opts || {};
+      const me = state.turn, op = 1 - me;
+      const ctx = makeCtx(state);
+      const now = fiveCells(ctx, me);
+      if (now.size) { const m = now.values().next().value; return { move: m, score: GP.WIN - 1, depth: 1, scores: {} }; }
+      if (!opts.noise) {
+        const win = vcf(ctx, me, 12, { n: 20000 });
+        if (win) return { move: win[0], score: GP.WIN - win.length, depth: win.length, scores: {}, forced: win };
+      }
+      const res = GP.runSearch(A, state, opts);
+      if (!res || opts.noise) return res;
+      const safe = (m) => {
+        const c = makeCtx(state);
+        c.side = me;
+        if (place(c, m)) return true;
+        return !vcf(c, op, 12, { n: 8000 });
+      };
+      if (Math.abs(res.score) < GP.DECISIVE && !safe(res.move)) {
+        const c = makeCtx(state);
+        for (const m of candidates(c, 20)) {
+          if (m !== res.move && safe(m)) return Object.assign({}, res, { move: m, note: 'avoids a forced loss' });
+        }
+      }
+      return res;
+    },
     initial(opts) {
       const n = (opts && opts.size) || 15;
       return { n, b: new Array(n * n).fill(-1), turn: opts && opts.first ? 1 : 0, last: -1 };

@@ -111,6 +111,43 @@
     },
   };
 
+  ART.chess = () => {
+    let s = '<rect x="40" y="10" width="80" height="80" rx="6" fill="#b58863"/>';
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if ((r + c) % 2 === 0) s += `<rect x="${40 + c * 20}" y="${10 + r * 20}" width="20" height="20" fill="#f0d9b5"/>`;
+    const glyph = (x, y, g, white) => `<text x="${x}" y="${y}" text-anchor="middle" font-size="19" fill="${white ? '#fff' : '#1b1b1f'}" stroke="${white ? '#1b1b1f' : '#fff'}" stroke-width=".6" font-family="DejaVu Sans,Segoe UI Symbol,Noto Sans Symbols 2,sans-serif">${g}&#xFE0E;</text>`;
+    s += glyph(70, 47, '♞', true) + glyph(90, 27, '♚', false) + glyph(110, 67, '♛', true) + glyph(50, 87, '♜', false);
+    s += '<path d="M72 45 L104 23" stroke="#2fb45a" stroke-width="3" stroke-linecap="round" opacity=".85"/>';
+    return s;
+  };
+  ART.checkers = () => {
+    let s = '<rect x="40" y="10" width="80" height="80" rx="6" fill="#f3e0c4"/>';
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if ((r + c) % 2 === 1) s += `<rect x="${40 + c * 20}" y="${10 + r * 20}" width="20" height="20" fill="#6d4c41"/>`;
+    const piece = (x, y, red, king) => `<circle cx="${x}" cy="${y}" r="7.5" fill="${red ? '#e53935' : '#26262b'}" stroke="rgba(0,0,0,.35)"/><circle cx="${x}" cy="${y}" r="4.5" fill="none" stroke="rgba(255,255,255,.35)"/>` + (king ? `<path d="M${x - 4} ${y + 1}l1.5-4 2.5 2.5 2.5-2.5 1.5 4z" fill="#ffd54f"/>` : '');
+    s += piece(70, 40, true) + piece(90, 20, false, true) + piece(50, 80, true) + piece(110, 60, false) + piece(90, 60, true, true);
+    return s;
+  };
+  ART.dots = () => {
+    let s = '';
+    const P = (i) => 46 + i * 22, Q = (i) => 16 + i * 22;
+    s += `<rect x="${P(0) + 2}" y="${Q(0) + 2}" width="18" height="18" rx="3" fill="#2f7bff" opacity=".35"/><rect x="${P(1) + 2}" y="${Q(1) + 2}" width="18" height="18" rx="3" fill="#ff4f93" opacity=".35"/>`;
+    const lines = [[0, 0, 1, 0], [0, 0, 0, 1], [1, 0, 1, 1], [0, 1, 1, 1], [1, 1, 2, 1], [1, 1, 1, 2], [2, 1, 2, 2], [1, 2, 2, 2], [2, 0, 3, 0], [3, 2, 3, 3]];
+    lines.forEach(([a, b, c, d], k) => { s += `<line x1="${P(a)}" y1="${Q(b)}" x2="${P(c)}" y2="${Q(d)}" stroke="${k < 4 ? '#2f7bff' : '#ff4f93'}" stroke-width="3.5" stroke-linecap="round"/>`; });
+    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) s += `<circle cx="${P(c)}" cy="${Q(r)}" r="3" fill="currentColor"/>`;
+    return s;
+  };
+  ART.filler = () => {
+    const cols = ['#e64553', '#8ccf4d', '#fad140', '#4aa7ea', '#6c4bb4', '#454545'];
+    const grid = ['301524', '052413', '240351', '413502', '125043'];
+    let s = '';
+    grid.forEach((row, r) => row.split('').forEach((ch, c) => {
+      let k = +ch;
+      if (r >= 3 && c <= 1) k = 1; // bottom-left area
+      if (r <= 1 && c >= 4) k = 0; // top-right area
+      s += `<rect x="${35 + c * 15.5}" y="${12 + r * 15.5}" width="14.5" height="14.5" rx="2" fill="${cols[k]}"/>`;
+    }));
+    return s;
+  };
+
   GP.art = function (id) {
     const fn = ART[id];
     return `<svg viewBox="0 0 160 100" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">${fn ? fn() : ''}</svg>`;

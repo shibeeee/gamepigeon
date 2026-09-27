@@ -85,11 +85,37 @@
       el,
       inputs,
       fill,
+      /* Sets every tile from an array (holes and blanks allowed). */
+      setAll(arr) {
+        arr.forEach((ch, i) => { if (inputs[i]) { values[i] = (ch || '').toLowerCase(); inputs[i].value = (ch || '').toUpperCase(); } });
+        emit();
+      },
       focusFirstEmpty() {
         const target = inputs.find((x, k) => x && !values[k]) || inputs.find(Boolean);
         if (target) target.focus();
       },
     };
+  };
+
+  /*
+   * One text box for the whole board: type or paste all letters at once and
+   * the tiles fill in live. Faster than tapping tile by tile.
+   */
+  GP.quickEntry = function (count, getTiles, current) {
+    const input = h('input', {
+      class: 'text-input mono quick', placeholder: 'Or type all ' + count + ' letters here',
+      autocapitalize: 'characters', autocomplete: 'off', spellcheck: 'false', maxlength: count + 10, value: current || '',
+      'aria-label': 'Type all letters at once',
+    });
+    input.addEventListener('input', () => {
+      const t = input.value.replace(/[^a-z]/gi, '').slice(0, count);
+      const tiles = getTiles();
+      const arr = [];
+      let k = 0;
+      tiles.inputs.forEach((inp) => { arr.push(inp ? (t[k++] || '') : ''); });
+      tiles.setAll(arr);
+    });
+    return input;
   };
 
   /* Asks for a string of letters and fills tiles with it. */

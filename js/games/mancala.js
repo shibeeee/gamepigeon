@@ -36,10 +36,45 @@
     return el;
   }
 
+  /*
+   * Move preview: with "Preview" on, tapping a pit plays the sowing out step
+   * by step on the board without committing it. Then Play it or Cancel.
+   */
+  let preview = GP.store.get('mancalaPreview', false);
+  let anim = null; // { key, move, frames, step, done }
+
+  function startPreview(v, k) {
+    const s = v.state, frames = [];
+    const p = s.pits.slice();
+    const src = E.pitIndex(s.turn, k);
+    p[src] = 0;
+    frames.push({ pits: p.slice(), cur: src });
+    for (const t of E.trace(s, k)) {
+      if (typeof t !== 'number') continue;
+      if (t >= 0) p[t]++; else p[-1 - t] = 0;
+      frames.push({ pits: p.slice(), cur: t >= 0 ? t : -1 - t });
+    }
+    const final = E.apply(s, k);
+    frames.push({ pits: (E.result(final) ? E.result(final).final : final.pits).slice(), cur: -1 });
+    anim = { key: JSON.stringify(s.pits) + s.turn, move: k, frames, step: 0, done: false, again: final.turn === s.turn };
+    const tick = () => {
+      if (!anim || anim.done) return;
+      anim.step++;
+      GP.sound.play('tick');
+      if (anim.step >= anim.frames.length - 1) { anim.step = anim.frames.length - 1; anim.done = true; }
+      v.game.renderBoard();
+      if (!anim.done) setTimeout(tick, Math.max(90, 260 - frames.length * 6));
+    };
+    v.game.renderBoard();
+    setTimeout(tick, 260);
+  }
+
   function render(host, v) {
     const s = v.state, g = v.game, me = v.me, op = 1 - me;
     GP.clear(host);
-    const p = v.result ? v.result.final : s.pits;
+    if (anim && anim.key !== JSON.stringify(s.pits) + s.turn) anim = null;
+    const frame = anim ? anim.frames[anim.step] : null;
+    const p = frame ? frame.pits : v.result ? v.result.final : s.pits;
     const legal = new Set(v.legal);
     const touched = new Map();
     if (v.animate) E.trace(v.animate.from, v.animate.move).forEach((i, k) => { if (typeof i === 'number' && i >= 0 && !touched.has(i)) touched.set(i, k); });
@@ -51,18 +86,21 @@
       const isHint = v.hint && s.turn === side && v.hint.move === k;
       return slotEl(slot, p[slot], false, {
         aria: (side === me ? 'Your' : 'Opponent') + ' pit ' + (k + 1),
-        cls: (mine && v.canPlay ? ' playable' : '') + (isHint ? ' hint' : '') + (touched.has(slot) ? ' bump' : '') + (v.animate && E.pitIndex(v.animate.from.turn, v.animate.move) === slot ? ' source' : ''),
+        cls: (mine && v.canPlay ? ' playable' : '') + (isHint ? ' hint' : '') + (frame && frame.cur === slot ? ' cur' : '') + (v.threats && v.threats.cells.includes(slot) ? ' threat' : '') + (touched.has(slot) ? ' bump' : '') + (v.animate && E.pitIndex(v.animate.from.turn, v.animate.move) === slot ? ' source' : ''),
         delay: touched.has(slot) ? touched.get(slot) * 70 : null,
         num: k + 1,
         upright,
-        onclick: v.editing ? () => v.onEdit(slot) : mine && v.canPlay ? () => v.onMove(k) : null,
+        onclick: v.editing ? () => v.onEdit(slot) : mine && v.canPlay ? () => {
+          if (anim) return;
+          if (preview) startPreview(v, k); else v.onMove(k);
+        } : null,
       });
     };
     const store = (side) => {
       const slot = E.STORE[side];
       return slotEl(slot, p[slot], true, {
         aria: (side === me ? 'Your' : 'Opponent') + ' store',
-        cls: ' side' + (side === me ? 'me' : 'op') + (touched.has(slot) ? ' bump' : ''),
+        cls: ' side' + (side === me ? 'me' : 'op') + (touched.has(slot) ? ' bump' : '') + (frame && frame.cur === slot ? ' cur' : ''),
         upright,
         delay: touched.has(slot) ? touched.get(slot) * 70 : null,
         onclick: v.editing ? () => v.onEdit(slot) : null,
@@ -86,10 +124,26 @@
     }
     const view = GP.segmented([{ value: 'auto', label: 'Auto' }, { value: 'down', label: 'Upright' }, { value: 'across', label: 'Across' }],
       layout(), (val) => { GP.store.set('mancalaLayout', val); g.renderBoard(); }, 'seg-small');
+    const pv = h('button', { type: 'button', class: 'chip-toggle' + (preview ? ' on' : ''), title: 'Tap a pit to watch the move before playing it',
+      onclick: () => { preview = !preview; GP.store.set('mancalaPreview', preview); anim = null; g.renderBoard(); } }, GP.icon('play'), 'Preview');
+    let bar = null;
+    if (anim && anim.done) {
+      const o = E.outcome(s, anim.move);
+      const bits = [];
+      if (o.extra) bits.push('another turn');
+      if (o.captured) bits.push('captures');
+      if (o.pickups) bits.push('chains ' + GP.plural(o.pickups, 'time'));
+      bits.push((o.banked >= 0 ? '+' : '') + o.banked + ' in the store');
+      bar = h('div', { class: 'coach preview-bar' }, GP.icon('play'),
+        h('span', { class: 'coach-text' }, h('b', null, 'Pit ' + (anim.move + 1) + ' preview'), h('small', null, bits.join(' · '))),
+        GP.button('Play it', { kind: 'primary', class: 'btn-sm', onclick: () => { const m = anim.move; anim = null; v.onMove(m); } }),
+        GP.button('Cancel', { kind: 'ghost', class: 'btn-sm', onclick: () => { anim = null; g.renderBoard(); } }));
+    }
     host.appendChild(h('div', { class: 'mc-wrap' + (upright ? ' upright' : '') },
-      h('div', { class: 'mc-top' }, h('span', { class: 'mc-label' }, g.who(op) + ' (' + g.sideName(op) + ')'), view),
+      h('div', { class: 'mc-top' }, h('span', { class: 'mc-label' }, g.who(op) + ' (' + g.sideName(op) + ')'), h('span', { class: 'mc-tools' }, pv, view)),
       board,
-      h('div', { class: 'mc-label' }, g.who(me) + ' (' + g.sideName(me) + ')' + (upright ? ': your pits are on the left' : ''))));
+      h('div', { class: 'mc-label' }, g.who(me) + ' (' + g.sideName(me) + ')' + (upright ? ': your pits are on the left' : '')),
+      bar));
   }
 
   const layout = () => GP.store.get('mancalaLayout', 'auto');
@@ -108,6 +162,23 @@
         choices: [3, 4, 5, 6].map((n) => ({ value: n, label: String(n) })),
       }],
       render,
+      threats(s, me) {
+        if (s.mode !== 'capture') return null;
+        // Your pits the opponent could capture on their next move.
+        const opp = Object.assign({}, s, { turn: 1 - me });
+        const hit = new Map();
+        for (let k = 0; k < 6; k++) {
+          if (!s.pits[E.pitIndex(1 - me, k)]) continue;
+          const after = E.apply(opp, k).pits;
+          for (let j = 0; j < 6; j++) {
+            const i = E.pitIndex(me, j);
+            if (s.pits[i] > 0 && after[i] === 0) hit.set(i, Math.max(hit.get(i) || 0, s.pits[i]));
+          }
+        }
+        if (!hit.size) return null;
+        const total = Math.max(...hit.values());
+        return { cells: [...hit.keys()], text: 'They can capture up to ' + GP.plural(total, 'pebble') + ' from ' + [...hit.keys()].map((i) => 'pit ' + (i % 7 + 1)).join(', ') };
+      },
       explain(s, k) {
         const o = E.outcome(s, k), bits = [];
         if (o.extra) bits.push('lands in the store for another turn');

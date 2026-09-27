@@ -8,13 +8,16 @@ offline too.
 
 ## New in this version
 
-- A coach bar under every board shows the best move, explains why, and plays it with one tap
-- Mancala has an upright layout that matches GamePigeon on phones, with numbered pits
-- Word games get a round timer, a word search and checker, copy-to-clipboard and Undo after clearing
-- Tapping a word on a phone scrolls its path into view
-- Home screen: install tip, share button, "last played" times, and Continue opens your most recent game
-- Settings: round timer length, and your win/loss records with a reset button
-- The dictionary preloads in the background, and updates now show up right away
+- **New games:** Chess (powered by Stockfish), Checkers, Dots and Boxes, and Filler
+- **Bot mode for real matches:** enter your opponent's move (usually one tap from a list of likely moves) and the bot answers; turn on "Bot plays my moves" and it plays your side on its own
+- **Perfect Four in a Row:** an exact solver plus an opening book; every column is labeled Win, Draw or Lose
+- **Stronger AIs:** Gomoku finds forced wins, Mancala follows extra turns and captures to the end
+- **Threat warnings** in red on every board game
+- **Game review** that marks blunders and mistakes and shows the better move
+- **Screenshot reading** for Word Hunt, Anagrams and Filler, all on your device
+- **Sea Battle** now shows real chances from thousands of simulated fleets
+- Mancala move preview, Word Hunt "smooth route" order, type-all-letters box, swipe gestures
+- Larger text, high contrast, reduced motion, and a short welcome tour
 
 ## What's inside
 
@@ -24,8 +27,8 @@ Coaches and solvers for GamePigeon games:
 - **Anagrams**: every word from your 6 or 7 letters
 - **Word Bites**: every word your pieces can make, with a layout diagram
 - **Sea Battle**: a heat map of where the enemy ships are, and the best next shot
-- **Four in a Row, Reversi, Gomoku, Mancala (Capture and Avalanche), Tic Tac Toe**:
-  an AI that shows your best move, or that you can practice against
+- **Chess, Checkers, Four in a Row, Reversi, Gomoku, Mancala, Dots and Boxes, Filler, Tic Tac Toe**:
+  a bot that shows or plays your best move, or that you can practice against
 
 Everything saves automatically. Light and dark themes, sounds, undo/redo,
 a board editor and backup/restore are all built in.

@@ -26,7 +26,7 @@
       const canTap = v.editing || (legal.has(i) && v.canPlay);
       const cell = h('button', {
         type: 'button',
-        class: 'oth-cell' + (legal.has(i) && !v.editing ? ' legal' : '') + (i === hint ? ' hint' : ''),
+        class: 'oth-cell' + (legal.has(i) && !v.editing ? ' legal' : '') + (i === hint ? ' hint' : '') + (v.threats && v.threats.cells.includes(i) ? ' threat' : ''),
         'aria-label': label(i),
         onclick: canTap ? () => (v.editing ? v.onEdit(i) : v.onMove(i)) : null,
         onmouseenter: legal.has(i) && v.canPlay ? () => preview(i, true) : null,
@@ -58,6 +58,12 @@
       const n = E.flipsFor(s, m).length;
       const corner = [0, 7, 56, 63].includes(m);
       return (corner ? 'takes a corner, ' : '') + 'flips ' + GP.plural(n, 'disc');
+    },
+    threats(s, me) {
+      // Corners your opponent could take on their next turn if you don't act.
+      const opp = Object.assign({}, s, { turn: 1 - me });
+      const corners = [0, 7, 56, 63].filter((i) => E.flipsFor(opp, i).length);
+      return corners.length ? { cells: corners, text: 'They can take the corner' + (corners.length > 1 ? 's at ' : ' at ') + corners.map(label).join(', ') } : null;
     },
     evalScale: 300,
     render,

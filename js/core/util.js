@@ -49,7 +49,11 @@
     colorblind: false,
     strength: 'normal',
     coords: true,
+    textSize: 'normal',
+    contrast: false,
   };
+  // Respect the phone's "reduce motion" setting the first time.
+  try { if (matchMedia('(prefers-reduced-motion: reduce)').matches) DEFAULTS.animations = false; } catch (e) { /* old browser */ }
   GP.settings = Object.assign({}, DEFAULTS, GP.store.get('settings', {}));
   const settingListeners = [];
   GP.setSetting = function (key, value) {
@@ -71,6 +75,9 @@
     d.classList.toggle('no-anim', !GP.settings.animations);
     d.classList.toggle('colorblind', !!GP.settings.colorblind);
     d.classList.toggle('no-coords', !GP.settings.coords);
+    d.classList.toggle('text-large', GP.settings.textSize === 'large');
+    d.classList.toggle('text-xl', GP.settings.textSize === 'xl');
+    d.classList.toggle('contrast', !!GP.settings.contrast);
   };
 
   /* ---------- DOM ---------- */
@@ -168,7 +175,7 @@
       options.forEach((o) => {
         el.appendChild(GP.h('button', {
           type: 'button', role: 'radio', 'aria-checked': String(o.value === v),
-          class: o.value === v ? 'on' : '',
+          class: (o.value === v ? 'on' : '') + (o.cls ? ' ' + o.cls : ''),
           title: o.title || null,
           onclick: () => { if (o.value !== v) { render(o.value); GP.sound.play('click'); onchange(o.value); } },
         }, o.icon ? GP.icon(o.icon) : null, o.swatch ? GP.h('i', { class: 'swatch', style: { background: o.swatch } }) : null, o.label));
@@ -338,9 +345,12 @@
   }
   GP.ai = {
     /* Returns a promise for {move, score, depth, scores}. Starting a new search cancels the old one. */
-    search(engine, state, strength) {
+    search(engine, state, strength, purpose) {
       const opts = Object.assign({}, GP.STRENGTH[strength || GP.settings.strength] || GP.STRENGTH.normal);
       GP.ai.cancel();
+      // Engines with their own worker (chess uses Stockfish).
+      const eng = GP.engines[engine];
+      if (eng && eng.asyncSearch) return eng.asyncSearch(state, strength || GP.settings.strength, purpose);
       const w = getWorker();
       if (!w) return runLocal(engine, state, opts);
       const id = ++reqId;
@@ -350,6 +360,7 @@
       });
     },
     cancel() {
+      if (GP.stockfish) GP.stockfish.stop();
       if (worker && pending.size) {
         worker.terminate();
         worker = null;
@@ -373,6 +384,17 @@
       });
     }
     return wordsPromise;
+  };
+
+  /* Horizontal swipe on an element (phones): left and right callbacks. */
+  GP.onSwipe = function (el, onLeft, onRight) {
+    let x0 = 0, y0 = 0, t0 = 0;
+    el.addEventListener('touchstart', (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); }, { passive: true });
+    el.addEventListener('touchend', (e) => {
+      const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
+      if (Date.now() - t0 > 600 || Math.abs(dx) < 60 || Math.abs(dy) > 50) return;
+      if (dx < 0) onLeft(); else if (onRight) onRight();
+    }, { passive: true });
   };
 
   /* ---------- Misc ---------- */

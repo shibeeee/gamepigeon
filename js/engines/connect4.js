@@ -107,7 +107,41 @@
     },
   };
 
+  /* Converts the solver's value (see c4solver.js) into the app's score scale. */
+  function exactScore(v, moves) {
+    if (v === 0) return 0;
+    const ply = Math.max(1, N + 1 - 2 * Math.abs(v) - moves);
+    return v > 0 ? GP.WIN - ply : -(GP.WIN - ply);
+  }
+
   GP.defineEngine('connect4', A, {
+    /*
+     * Perfect play when possible: the opening book, then the exact solver.
+     * Only if both run out of time does it fall back to the heuristic search.
+     */
+    search(state, opts) {
+      opts = opts || {};
+      const S = GP.c4solver;
+      if (!S || opts.noise) return GP.runSearch(A, state, opts);
+      const b = state.b, turn = state.turn;
+      const moves = b.filter((v) => v >= 0).length;
+      const budget = Math.max(opts.timeMs || 900, opts.solveMs != null ? opts.solveMs : 4000);
+      const start = Date.now();
+      let best = null;
+      const bm = S.bookMove(b);
+      if (bm != null && b[bm] === -1) best = { move: bm, value: null, book: true };
+      else {
+        const r = S.bestMove(b, turn, budget * 0.75);
+        if (r) best = { move: r.move, value: r.value };
+      }
+      if (!best) return GP.runSearch(A, state, Object.assign({}, opts, { timeMs: Math.min(opts.timeMs || 900, 1000) }));
+      // Win / draw / loss for every column, if there's time left.
+      const cls = S.classify(b, turn, Math.max(300, budget - (Date.now() - start)));
+      const scores = {};
+      if (cls) for (const c in cls) scores[c] = cls[c] > 0 ? GP.WIN / 2 : cls[c] < 0 ? -GP.WIN / 2 : 0;
+      let score = best.value != null ? exactScore(best.value, moves) : cls ? scores[best.move] : 0;
+      return { move: best.move, score, depth: N - moves, scores, exact: true, solved: true, book: !!best.book };
+    },
     size: { W, H },
     initial(opts) {
       return { b: new Array(N).fill(-1), turn: opts && opts.first ? 1 : 0, last: -1 };

@@ -107,5 +107,103 @@
     return { score, max, best, blocked };
   }
 
-  GP.seabattle = { UNKNOWN, MISS, HIT, SUNK, FLEETS, analyze, groups, blockedCells, neighbours };
+  /*
+   * Monte Carlo: build thousands of complete enemy fleets that fit
+   * everything we know (misses, hits, sunk ships, no touching) and count how
+   * often each cell holds a ship. Ships are first placed over unexplained
+   * hits, then the rest go anywhere legal. Returns chances from 0 to 1, or
+   * null if too few fleets could be built (the caller falls back to analyze).
+   */
+  function simulate(n, cells, remaining, timeMs) {
+    const blocked = blockedCells(n, cells);
+    const ships = [];
+    Object.keys(remaining).map(Number).sort((a, b) => b - a).forEach((len) => { for (let k = 0; k < remaining[len]; k++) ships.push(len); });
+    if (!ships.length) return null;
+    const hits = [];
+    cells.forEach((v, i) => { if (v === HIT) hits.push(i); });
+    const near = Array.from({ length: n * n }, (_, i) => neighbours(n, i));
+
+    // Every placement of every length, precomputed once.
+    const placements = {};
+    for (const len of new Set(ships)) {
+      const list = [];
+      for (let dir = 0; dir < (len === 1 ? 1 : 2); dir++) {
+        const dr = dir, dc = 1 - dir;
+        for (let r = 0; r + dr * (len - 1) < n; r++) for (let c = 0; c + dc * (len - 1) < n; c++) {
+          const idx = [];
+          let ok = true;
+          for (let k = 0; k < len; k++) {
+            const i = (r + k * dr) * n + (c + k * dc);
+            if (cells[i] === MISS || cells[i] === SUNK || blocked[i]) { ok = false; break; }
+            idx.push(i);
+          }
+          if (ok) list.push(idx);
+        }
+      }
+      placements[len] = list;
+    }
+
+    const count = new Float64Array(n * n);
+    const taken = new Uint8Array(n * n); // ship cells in this sample
+    const nearShip = new Uint8Array(n * n); // cells touching a ship in this sample
+    let accepted = 0, tries = 0;
+    const deadline = Date.now() + (timeMs || 150);
+
+    const fits = (idx) => {
+      for (const i of idx) if (taken[i] || nearShip[i]) return false;
+      // must not touch a hit it doesn't cover (that hit would belong to a touching ship)
+      for (const i of idx) for (const j of near[i]) if (cells[j] === HIT && !idx.includes(j) && !taken[j]) return false;
+      return true;
+    };
+    const put = (idx) => {
+      for (const i of idx) { taken[i] = 1; for (const j of near[i]) nearShip[j] = 1; }
+    };
+
+    while (Date.now() < deadline && accepted < 6000) {
+      tries++;
+      taken.fill(0); nearShip.fill(0);
+      const left = ships.slice();
+      let ok = true;
+      // 1. Explain every hit.
+      for (const hIdx of hits.slice().sort(() => Math.random() - 0.5)) {
+        if (taken[hIdx]) continue;
+        const cand = [];
+        left.forEach((len, si) => {
+          for (const idx of placements[len]) if (idx.includes(hIdx) && fits(idx)) cand.push([si, idx]);
+        });
+        if (!cand.length) { ok = false; break; }
+        const [si, idx] = cand[Math.floor(Math.random() * cand.length)];
+        put(idx);
+        left.splice(si, 1);
+      }
+      if (!ok) continue;
+      // 2. Place the rest anywhere legal (and away from hits).
+      for (const len of left) {
+        const list = placements[len];
+        let placed = false;
+        for (let attempt = 0; attempt < 40 && !placed; attempt++) {
+          const idx = list[Math.floor(Math.random() * list.length)];
+          if (idx && fits(idx) && !idx.some((i) => cells[i] === HIT)) { put(idx); placed = true; }
+        }
+        if (!placed) {
+          const cand = list.filter((idx) => fits(idx) && !idx.some((i) => cells[i] === HIT));
+          if (!cand.length) { ok = false; break; }
+          put(cand[Math.floor(Math.random() * cand.length)]);
+        }
+      }
+      if (!ok) continue;
+      accepted++;
+      for (let i = 0; i < n * n; i++) if (taken[i] && cells[i] === UNKNOWN) count[i]++;
+    }
+    if (accepted < 40) return null;
+    const prob = new Float64Array(n * n);
+    let max = 0;
+    for (let i = 0; i < n * n; i++) { prob[i] = count[i] / accepted; if (prob[i] > max) max = prob[i]; }
+    const best = [];
+    for (let i = 0; i < n * n; i++) if (cells[i] === UNKNOWN && prob[i] > 0 && prob[i] >= max - 0.005) best.push(i);
+    return { prob, max, best, blocked, samples: accepted };
+  }
+
+  GP.seabattle = {
+    simulate, UNKNOWN, MISS, HIT, SUNK, FLEETS, analyze, groups, blockedCells, neighbours };
 })(typeof globalThis !== 'undefined' ? globalThis : self);

@@ -136,7 +136,7 @@
       h('footer', { class: 'foot' },
         h('p', null, 'Everything saves automatically on this device. Works offline once loaded.'),
         h('p', null, 'Inspired by ', h('a', { href: 'https://github.com/k-gerner/Game-Pigeon-Solvers', target: '_blank', rel: 'noopener' }, 'Kyle Gerner\'s Game Pigeon Solvers'),
-          '. Not affiliated with GamePigeon.'))));
+          '. Chess by Stockfish (GPL-3.0). Not affiliated with GamePigeon.'))));
     draw();
   }
 
@@ -202,6 +202,12 @@
       h('div', { class: 'field' }, h('label', null, 'Accent color'), accent),
       GP.toggle('Animations', S.animations, (v) => GP.setSetting('animations', v)),
       GP.toggle('Color-blind friendly colors', S.colorblind, (v) => GP.setSetting('colorblind', v), 'Uses blue and orange instead of red and green'),
+      h('h4', null, 'Accessibility'),
+      h('div', { class: 'field' }, h('label', null, 'Text size'),
+        GP.segmented([{ value: 'normal', label: 'Normal' }, { value: 'large', label: 'Large' }, { value: 'xl', label: 'Extra large' }],
+          S.textSize, (v) => GP.setSetting('textSize', v))),
+      GP.toggle('High contrast', S.contrast, (v) => GP.setSetting('contrast', v), 'Stronger outlines and colors on boards and buttons'),
+      GP.button('Show the welcome tour again', { icon: 'help', kind: 'ghost', class: 'btn-sm', onclick: () => tour(true) }),
       h('h4', null, 'Sound and feel'),
       GP.toggle('Sound effects', S.sound, (v) => GP.setSetting('sound', v)),
       GP.toggle('Vibration', S.haptics, (v) => GP.setSetting('haptics', v), 'On phones that support it'),
@@ -282,7 +288,39 @@
     window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(() => {}));
   }
 
+  /* First-run tour: four short cards. */
+  function tour(force) {
+    if (!force && GP.store.get('tourDone')) return;
+    const steps = [
+      { art: 'connect4', title: 'Welcome to Pigeon Pal', text: 'A coach for your GamePigeon games. Pick a game, copy the board, and get the best move.' },
+      { art: 'othello', title: 'Beat a real person', text: 'Choose "Real person" and enter the move your opponent made. The bot shows your best reply. Turn on "Bot plays my moves" and you only enter theirs.' },
+      { art: 'gomoku', title: 'Hints, warnings and reviews', text: 'Red squares warn you about threats. After a game, tap "Review game" to see your mistakes and the better moves.' },
+      { art: 'wordhunt', title: 'Word games in seconds', text: 'Type the letters, or load a screenshot and let the app read them. Every word appears instantly, best first.' },
+    ];
+    let i = 0;
+    const body = h('div', { class: 'tour' });
+    const draw = () => {
+      const st = steps[i];
+      GP.clear(body).append(
+        h('div', { class: 'tour-art', html: GP.art(st.art) }),
+        h('h3', null, st.title),
+        h('p', null, st.text),
+        h('div', { class: 'tour-dots' }, steps.map((_, k) => h('i', { class: k === i ? 'on' : '' }))));
+      next.querySelector('span').textContent = i === steps.length - 1 ? 'Let\'s go' : 'Next';
+    };
+    const m = GP.modal('Quick tour', body, [
+      { label: 'Skip', kind: 'ghost', onclick: () => GP.store.set('tourDone', true) },
+      { label: 'Next', kind: 'primary', keepOpen: true, onclick: () => {
+        if (i < steps.length - 1) { i++; draw(); GP.sound.play('pop'); } else { GP.store.set('tourDone', true); m.close(); }
+      } },
+    ]);
+    const next = m.el.querySelector('footer .btn-primary');
+    GP.onSwipe(body, () => { if (i < steps.length - 1) { i++; draw(); } }, () => { if (i > 0) { i--; draw(); } });
+    draw();
+  }
+
   route();
+  if (!location.hash.startsWith('#/play/')) setTimeout(() => tour(false), 400);
 
   // Fetch the dictionary in the background so word games open instantly.
   const idle = window.requestIdleCallback || ((fn) => setTimeout(fn, 1500));

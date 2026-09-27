@@ -4,7 +4,7 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Pigeon Pal</title>
-  <meta name="description" content="Solvers, hints and a practice AI for GamePigeon games: Word Hunt, Anagrams, Word Bites, Sea Battle, Four in a Row, Reversi, Gomoku, Mancala and Tic Tac Toe.">
+  <meta name="description" content="Solvers, hints and a practice AI for GamePigeon games: Word Hunt, Anagrams, Word Bites, Sea Battle, Chess, Checkers, Four in a Row, Reversi, Gomoku, Mancala, Dots and Boxes, Filler and Tic Tac Toe.">
   <meta name="theme-color" content="#7c5cff">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -20,6 +20,8 @@
   <noscript><p style="padding:24px">Pigeon Pal needs JavaScript turned on.</p></noscript>
 
   <script src="js/engines/common.js"></script>
+  <script src="js/engines/c4solver.js"></script>
+  <script src="data/c4book.js"></script>
   <script src="js/engines/connect4.js"></script>
   <script src="js/engines/othello.js"></script>
   <script src="js/engines/gomoku.js"></script>
@@ -27,11 +29,18 @@
   <script src="js/engines/mancala.js"></script>
   <script src="js/engines/words.js"></script>
   <script src="js/engines/seabattle.js"></script>
+  <script src="js/engines/checkers.js"></script>
+  <script src="js/engines/dots.js"></script>
+  <script src="js/engines/filler.js"></script>
+  <script src="vendor/chess/chess.js"></script>
+  <script src="js/engines/chess.js"></script>
 
   <script src="js/core/util.js"></script>
   <script src="js/core/art.js"></script>
   <script src="js/core/boardgame.js"></script>
   <script src="js/core/wordui.js"></script>
+  <script src="js/core/imagegrid.js"></script>
+  <script src="js/core/stockfish.js"></script>
 
   <script src="js/games/wordhunt.js"></script>
   <script src="js/games/anagrams.js"></script>
@@ -42,6 +51,10 @@
   <script src="js/games/gomoku.js"></script>
   <script src="js/games/mancala.js"></script>
   <script src="js/games/tictactoe.js"></script>
+  <script src="js/games/chess.js"></script>
+  <script src="js/games/checkers.js"></script>
+  <script src="js/games/dots.js"></script>
+  <script src="js/games/filler.js"></script>
 
   <script src="js/core/app.js"></script>
 </body>

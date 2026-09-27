@@ -24,6 +24,9 @@
         }), GP.roundTimer('anagrams')),
         tileHost,
         h('div', { class: 'btn-row' },
+          GP.button('Screenshot', { icon: 'upload', title: 'Read the letters from a screenshot', onclick: () => {
+            GP.lettersFromScreenshot({ rows: 1, cols: st.count, key: 'anagrams-' + st.count, done: (letters) => tiles.setAll(letters) });
+          } }),
           GP.button('Type letters', { icon: 'paste', onclick: () => GP.pasteDialog(st.count, (t) => tiles.fill(t, 0)) }),
           GP.button('Random', { icon: 'shuffle', onclick: randomize }),
           GP.button('Clear', { icon: 'trash', kind: 'ghost', onclick: () => {

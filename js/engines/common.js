@@ -12,6 +12,9 @@
  *   noMoves(ctx, ply)      -> score when moves() is empty
  *   evaluate(ctx)          -> heuristic score for the side to move
  *   hash(ctx)              -> optional numeric key for the transposition table
+ *   noisy(ctx)             -> optional: moves that must be followed past the
+ *                             search horizon (extra turns, captures), so a
+ *                             position isn't judged in the middle of a combo
  *
  * Works in the page, in a Web Worker and in Node (tests).
  */
@@ -25,11 +28,13 @@
   GP.DECISIVE = WIN / 4;
 
   /* Strength presets shared by every AI. */
+  // solveMs: extra time exact solvers (Connect 4) may use to prove the result.
   GP.STRENGTH = {
-    easy: { timeMs: 250, maxDepth: 2, noise: 0.35 },
-    normal: { timeMs: 900, maxDepth: 64 },
-    hard: { timeMs: 2500, maxDepth: 64 },
-    max: { timeMs: 6000, maxDepth: 64 },
+    easy: { timeMs: 250, maxDepth: 2, noise: 0.35, solveMs: 0 },
+    quick: { timeMs: 350, maxDepth: 64, solveMs: 600 },
+    normal: { timeMs: 900, maxDepth: 64, solveMs: 4000 },
+    hard: { timeMs: 2500, maxDepth: 64, solveMs: 7000 },
+    max: { timeMs: 6000, maxDepth: 64, solveMs: 15000 },
   };
 
   /* Deterministic 32-bit random numbers for Zobrist hashing. */
@@ -57,10 +62,34 @@
     let nodes = 0;
     let ctx;
 
+    // Quiescence: past the horizon, keep playing only "noisy" moves.
+    function qs(alpha, beta, ply, left) {
+      const t = A.terminal(ctx, ply);
+      if (t !== null) return t;
+      const stand = A.evaluate(ctx);
+      if (left <= 0) return stand;
+      if ((++nodes & 1023) === 0 && Date.now() > deadline) throw TIMEOUT;
+      const ms = A.noisy(ctx);
+      if (!ms.length) return stand;
+      let best = stand;
+      if (best > alpha) alpha = best;
+      if (alpha >= beta) return best;
+      const side = A.side(ctx);
+      for (const m of ms) {
+        const tok = A.make(ctx, m);
+        const v = A.side(ctx) === side ? qs(alpha, beta, ply + 1, left - 1) : -qs(-beta, -alpha, ply + 1, left - 1);
+        A.unmake(ctx, m, tok);
+        if (v > best) best = v;
+        if (v > alpha) alpha = v;
+        if (alpha >= beta) break;
+      }
+      return best;
+    }
+
     function nm(depth, alpha, beta, ply) {
       const t = A.terminal(ctx, ply);
       if (t !== null) return t;
-      if (depth <= 0) return A.evaluate(ctx);
+      if (depth <= 0) return A.noisy ? qs(alpha, beta, ply, 8) : A.evaluate(ctx);
       if ((++nodes & 1023) === 0 && Date.now() > deadline) throw TIMEOUT;
 
       let key, ttMove;

@@ -28,7 +28,8 @@ jobs:
       - name: Build the zip
         run: |
           mkdir -p dist/pigeon-pal
-          cp -r index.html css js data icons manifest.webmanifest sw.js README.md dist/pigeon-pal/
+          cp -r index.html css js data icons vendor manifest.webmanifest sw.js README.md LICENSE THIRD_PARTY.md dist/pigeon-pal/
+          rm -f dist/pigeon-pal/data/c4book-*.js
           cd dist && zip -qr "pigeon-pal-${VERSION}.zip" pigeon-pal
       - name: Publish the release
         env:
