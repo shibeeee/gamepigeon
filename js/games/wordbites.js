@@ -130,14 +130,13 @@
         h('div', { class: 'focus-word' }, item.word.toUpperCase()),
         h('div', { class: 'focus-meta' }, (item.dir === 'H' ? 'Across' : 'Down') + ' · ' + GP.fmt(item.score) + ' points'),
         diagram(item),
-        h('div', { class: 'btn-row' }, GP.button(used.has(item.key) ? 'Untick' : 'Tick off', { icon: 'check', kind: 'primary', onclick: () => toggle(item.key) }))));
+        h('div', { class: 'btn-row' }, GP.button(used.has(item.key) ? 'Undo cross-off' : 'Cross off', { icon: 'check', kind: 'primary', onclick: () => toggle(item.key) }))));
     }
 
     function render(empty) {
       GP.clear(side);
       if (empty) {
-        side.appendChild(h('div', { class: 'card empty-card' }, h('div', { class: 'big-emoji' }, '🧱'),
-          h('p', null, 'Enter the pieces on your board. Separate pairs with spaces, like "TH ER".')));
+        side.appendChild(h('div', { class: 'card empty-card' },           h('p', null, 'Type the pieces from your board. Put a space between pairs, like "TH ER".')));
         return;
       }
       const shown = results.filter((x) => st.dir === 'all' || x.dir === st.dir);
@@ -161,12 +160,10 @@
     tagline: 'Snap pieces into words',
     category: 'word',
     color: '#ff8a1f',
-    help: `<p>Pieces hold one or two letters. Two-letter pieces are either across (side by
-      side) or down (stacked). Slide pieces together to form words across or down.</p>
-      <ul><li>Enter single letters, across pairs and down pairs. Separate pairs with spaces.</li>
-      <li>Tap a word to see exactly how to arrange the pieces. A pair that crosses the word
-      uses only one of its letters; the faded letter sticks out.</li>
-      <li>Across words can be up to 8 letters, down words up to 9.</li></ul>`,
+    help: `<p>Pieces have one or two letters. Two-letter pieces sit side by side or stacked. Slide them together to make words.</p>
+      <ul><li>Type your single letters, side-by-side pairs and stacked pairs. Put a space between pairs.</li>
+      <li>Tap a word to see how to line up the pieces. A faded letter sticks out of the word.</li>
+      <li>Words going across can be up to 8 letters, going down up to 9.</li></ul>`,
     mount,
   });
 })();

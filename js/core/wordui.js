@@ -118,19 +118,6 @@
     return input;
   };
 
-  /* Asks for a string of letters and fills tiles with it. */
-  GP.pasteDialog = function (count, onText) {
-    const input = h('input', { class: 'text-input', placeholder: 'e.g. ' + 'SAMPLELETTERS'.slice(0, Math.min(count, 13)), autocapitalize: 'characters', spellcheck: 'false' });
-    const m = GP.modal('Type or paste letters', h('div', null,
-      h('p', null, 'Enter the letters in reading order: left to right, top to bottom.'),
-      input), [
-      { label: 'Cancel', kind: 'ghost' },
-      { label: 'Fill board', kind: 'primary', onclick: () => onText(input.value.replace(/[^a-z]/gi, '')) },
-    ]);
-    input.addEventListener('keydown', (e) => { if (e.key === 'Enter') { onText(input.value.replace(/[^a-z]/gi, '')); m.close(); } });
-    setTimeout(() => input.focus(), 40);
-  };
-
   /* On phones the panel sits under the board; bring the board back into view. */
   GP.showOnPhone = (el) => {
     if (!el || window.innerWidth > 900) return;

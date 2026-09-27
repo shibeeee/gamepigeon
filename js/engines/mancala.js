@@ -143,10 +143,17 @@
   GP.defineEngine('mancala', A, {
     STORE,
     pitIndex,
+    /*
+     * pebbles: a number, or 'random' with range 'lo-hi'. Random boards are
+     * mirrored (each player's k-th pit gets the same count) so they stay fair.
+     */
     initial(opts) {
       const n = (opts && opts.pebbles) || 4;
-      const pits = new Array(14).fill(n);
-      pits[6] = 0; pits[13] = 0;
+      const pits = new Array(14).fill(0);
+      if (n === 'random') {
+        const [lo, hi] = String((opts && opts.range) || '2-6').split('-').map(Number);
+        for (let k = 0; k < 6; k++) pits[k] = pits[7 + k] = lo + Math.floor(Math.random() * (hi - lo + 1));
+      } else for (let k = 0; k < 6; k++) pits[k] = pits[7 + k] = n;
       return { pits, turn: opts && opts.first ? 1 : 0, mode: (opts && opts.mode) || 'capture', last: null };
     },
     /* What a move does: extra turn, pebbles banked, captures, avalanche pick-ups. */

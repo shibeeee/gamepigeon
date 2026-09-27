@@ -47,12 +47,13 @@
       if (saved && saved.v === 1 && saved.history && saved.history.length) {
         Object.assign(this, saved);
         this.options = Object.assign(this.defaultOptions(), saved.options);
+        this.autoHint = true; // the best move always shows now
         this.idx = Math.min(this.idx, this.history.length - 1);
       } else {
+        this.autoHint = true;
         this.me = 0;
         this.first = 0;
         this.mode = 'helper';
-        this.autoHint = true;
         this.autoMe = false;
         this.strength = GP.settings.strength;
         this.options = this.defaultOptions();
@@ -102,7 +103,7 @@
       this.review = null;
       // In bot mode, make sure the move the bot made for you gets noticed.
       if (byAI && this.mode === 'helper' && s.turn === this.me) {
-        GP.toast('Bot played ' + this.cfg.moveLabel(move, s) + '. Make this move in GamePigeon.', 'good');
+        GP.toast('Bot played ' + this.cfg.moveLabel(move, s) + '. Do the same in GamePigeon.', 'good');
       }
       if (this.cfg.onPlayed) this.cfg.onPlayed(this, move, s, next);
       else GP.sound.play('place');
@@ -133,10 +134,23 @@
       if (this.engine.result(this.state)) return;
       this.think(true);
     }
-    newGame() {
-      const go = () => this.reset();
-      if (this.idx > 0 && !this.engine.result(this.state)) GP.confirm('Start a new game?', 'The current game will be cleared.', 'New game', go);
-      else go();
+    /* A setting changed: start over, but let Undo restore the old setting and game. */
+    newGameWith(oldOptions) {
+      if (this.idx > 0 && !this.engine.result(this.state)) this.newGame('New game with the new setting', oldOptions);
+      else this.reset();
+    }
+
+    /* Starts over right away; the toast's Undo brings the old game back. */
+    newGame(message, oldOptions) {
+      const before = { history: this.history, moves: this.moves, idx: this.idx, options: Object.assign({}, oldOptions || this.options) };
+      const hadGame = this.idx > 0 && !this.engine.result(this.state);
+      this.reset();
+      if (hadGame) {
+        GP.toast(message || 'New game', null, { label: 'Undo', onclick: () => {
+          Object.assign(this, before, { review: null, recorded: false });
+          this.update();
+        } });
+      }
     }
 
     /* ---------- the game loop ---------- */
@@ -299,16 +313,16 @@
     renderStatus() {
       const s = this.state, res = this.engine.result(s), el = GP.clear(this.statusEl);
       let text, cls = '';
-      if (this.editing) { text = 'Editing: tap the board to change it'; cls = 'edit'; }
+      if (this.editing) { text = 'Tap the board to change it'; cls = 'edit'; }
       else if (res) {
-        if (res.winner == null) { text = "It's a draw"; cls = 'draw'; }
-        else if (res.winner === this.me) { text = this.mode === 'ai' ? 'You win!' : 'You won this one!'; cls = 'win'; }
-        else { text = (this.mode === 'ai' ? 'The computer wins' : 'Your opponent wins'); cls = 'lose'; }
+        if (res.winner == null) { text = "It's a tie"; cls = 'draw'; }
+        else if (res.winner === this.me) { text = 'You won'; cls = 'win'; }
+        else { text = (this.mode === 'ai' ? 'The computer won' : 'They won'); cls = 'lose'; }
         if (this.cfg.resultText) text += ' ' + this.cfg.resultText(res, this);
       } else if (this.thinking && this.mode === 'ai' && s.turn !== this.me) { text = 'Computer is thinking'; cls = 'thinking'; }
-      else if (this.thinking && this.botTurn()) { text = 'Bot is picking your move'; cls = 'thinking'; }
+      else if (this.thinking && this.botTurn()) { text = 'Bot is thinking'; cls = 'thinking'; }
       else if (s.turn === this.me) text = this.cfg.yourTurnText ? this.cfg.yourTurnText(this) : 'Your turn';
-      else text = this.mode === 'ai' ? "Computer's turn" : "Their turn: enter the move they made";
+      else text = this.mode === 'ai' ? "Computer's turn" : 'Their turn: tap the move they made';
       el.className = 'status ' + cls;
       el.appendChild(this.cfg.swatch(res ? (res.winner == null ? s.turn : res.winner) : s.turn));
       el.appendChild(h('span', { class: 'status-text' }, text));
@@ -376,7 +390,7 @@
       const likely = this.likelyMoves();
       if (likely.length && s.turn !== this.me) {
         slot.appendChild(h('div', { class: 'coach likely' }, GP.icon('bot'),
-          h('span', { class: 'coach-text' }, h('b', null, 'What did they play?'), h('small', null, 'Tap the board or a likely move')),
+          h('span', { class: 'coach-text' }, h('b', null, 'Their move?'), h('small', null, 'Tap it on the board, or pick one')),
           h('span', { class: 'likely-moves' }, likely.map((m, k) => button(this.cfg.moveLabel(m, s), {
             kind: k === 0 ? 'primary' : null, class: 'btn-sm', title: k === 0 ? 'Their best move' : 'Another strong move', onclick: () => this.play(m),
           })))));
@@ -384,7 +398,7 @@
       }
       if (!ins) {
         if (warn) slot.appendChild(h('div', { class: 'coach warn' }, h('span', { class: 'warn-icon' }, '!'), h('span', { class: 'coach-text' }, h('b', null, 'Watch out'), h('small', null, th.text))));
-        else if (this.thinking && !(this.mode === 'ai' && s.turn !== this.me)) slot.appendChild(h('div', { class: 'coach thinking' }, GP.icon('bulb'), h('span', null, 'Finding the best move'), h('span', { class: 'dots' }, h('i'), h('i'), h('i'))));
+        else if (this.thinking && !(this.mode === 'ai' && s.turn !== this.me)) slot.appendChild(h('div', { class: 'coach thinking' }, GP.icon('bulb'), h('span', null, 'Thinking'), h('span', { class: 'dots' }, h('i'), h('i'), h('i'))));
         return;
       }
       const canPlay = !(this.mode === 'ai' && s.turn !== this.me);
@@ -418,9 +432,7 @@
       el.appendChild(h('div', { class: 'btn-row' },
         button('Undo', { icon: 'undo', onclick: () => this.undo(), disabled: this.idx === 0, title: 'Undo (Ctrl+Z)' }),
         button('Redo', { icon: 'redo', onclick: () => this.redo(), disabled: this.idx >= this.history.length - 1, title: 'Redo (Ctrl+Y)' }),
-        button('Hint', { icon: 'bulb', onclick: () => this.hint(), disabled: over, title: 'Show the best move (H)' }),
-        button('Bot move', { icon: 'bot', onclick: () => this.aiMove(), disabled: over, title: 'Let the bot play this turn (A)' }),
-        this.cfg.edit ? button('Edit', { icon: 'edit', onclick: () => this.toggleEdit(), title: 'Set up any position (E)' }) : null,
+        this.cfg.edit ? button('Edit', { icon: 'edit', onclick: () => this.toggleEdit(), title: 'Change the board to match your game (E)' }) : null,
         button('New', { icon: 'refresh', kind: 'primary', onclick: () => this.newGame(), title: 'New game' })));
     }
 
@@ -428,56 +440,41 @@
       const el = GP.clear(this.panelEl), cfg = this.cfg;
       const sideOpts = cfg.sides.map((sd, i) => ({ value: i, label: sd.name, swatch: sd.color }));
 
-      // Players
       el.appendChild(h('div', { class: 'card' },
-        h('h3', null, 'Players'),
-        h('div', { class: 'field' }, h('label', null, 'Opponent'),
+        h('h3', null, 'Setup'),
+        h('div', { class: 'field' }, h('label', null, 'Playing against'),
           segmented([
-            { value: 'helper', label: 'Real person', title: 'You enter both players\' moves; the app coaches you' },
-            { value: 'ai', label: 'Computer', title: 'Practice against the AI' },
+            { value: 'helper', label: 'A friend' },
+            { value: 'ai', label: 'The computer' },
           ], this.mode, (v) => { this.mode = v; this.update(); })),
         h('p', { class: 'hint-text' }, this.mode === 'helper'
-          ? 'Playing on GamePigeon? Enter your opponent\'s moves here as they happen and follow the highlighted best move.'
-          : 'Practice against the computer. Your record is saved on the home screen.'),
-        h('div', { class: 'field' }, h('label', null, 'You play as'),
+          ? 'After your friend moves in GamePigeon, tap their move here. Your best move shows under the board.'
+          : 'Practice against the computer. Wins and losses show on the home screen.'),
+        h('div', { class: 'field' }, h('label', null, 'You are'),
           segmented(sideOpts, this.me, (v) => { this.me = v; this.recorded = true; this.update(); })),
-        this.mode === 'helper' ? toggle('Bot plays my moves', this.autoMe, (v) => { this.autoMe = v; this.update(); },
-          'You only enter their moves; copy the bot\'s move into GamePigeon') : null,
-        cfg.fixedFirst ? null : h('div', { class: 'field' }, h('label', null, 'Who goes first'),
+        cfg.fixedFirst ? null : h('div', { class: 'field' }, h('label', null, 'First move'),
           segmented(sideOpts, this.first, (v) => {
             this.first = v;
-            if (this.idx === 0) { this.reset(); } else GP.toast('Applies to the next new game');
-          }))));
-
-      // AI
-      const ins = this.insight();
-      const r = ins && ins.res;
-      const evalText = ins
-        ? 'Best for ' + ins.who + ': ' + ins.label + '  ·  ' + ins.verdict
-        : this.thinking ? 'Thinking…' : 'Tap Hint to analyze';
-      el.appendChild(h('div', { class: 'card' },
-        h('h3', null, 'AI coach'),
-        h('div', { class: 'evalbar', title: 'Who is ahead (your side on the left)' },
-          h('i', { style: { width: (ins ? ins.pct : 50) + '%' } })),
-        h('p', { class: 'eval-text' }, evalText, ins && ins.why ? h('span', { class: 'why' }, ' (' + ins.why + ')') : null,
-          r ? h('small', null, ' Looked ' + r.depth + ' moves ahead.') : null),
-        toggle('Show my best move automatically', this.autoHint, (v) => { this.autoHint = v; this.update(); }),
-        h('div', { class: 'field' }, h('label', null, this.mode === 'ai' ? 'Computer strength' : 'Bot strength'),
+            if (this.idx === 0) this.reset(); else GP.toast('Starts with your next new game');
+          })),
+        this.mode === 'helper' ? toggle('Bot moves for me', this.autoMe, (v) => { this.autoMe = v; this.update(); },
+          'You only tap their moves. Copy the bot\'s moves into GamePigeon.') : null,
+        h('div', { class: 'field' }, h('label', null, this.mode === 'ai' ? 'Computer level' : 'Bot level'),
           segmented([
             { value: 'easy', label: 'Easy' }, { value: 'normal', label: 'Normal' },
-            { value: 'hard', label: 'Hard' }, { value: 'max', label: 'Max' },
+            { value: 'hard', label: 'Hard' }, { value: 'max', label: 'Best' },
           ], this.strength, (v) => { this.strength = v; this.save(); }))));
 
       // Game options
-      if (cfg.options && cfg.options.length) {
-        el.appendChild(h('div', { class: 'card' }, h('h3', null, 'Game options'),
-          cfg.options.map((opt) => h('div', { class: 'field' }, h('label', null, opt.label),
+      const opts = (cfg.options || []).filter((opt) => !opt.showIf || opt.showIf(this.options));
+      if (opts.length) {
+        el.appendChild(h('div', { class: 'card' }, h('h3', null, 'Board'),
+          opts.map((opt) => h('div', { class: 'field' }, h('label', null, opt.label),
             segmented(opt.choices, this.options[opt.key], (v) => {
-              const apply = () => { this.options[opt.key] = v; this.reset(); };
-              if (this.idx > 0 && !this.engine.result(this.state)) GP.confirm('Change ' + opt.label.toLowerCase() + '?', 'This starts a new game.', 'Start over', apply);
-              else apply();
-              // Redraw so the control shows the real value if the dialog is cancelled.
-              if (this.idx > 0) setTimeout(() => this.renderPanel(), 0);
+              // newGame's Undo restores the old setting too.
+              const before = Object.assign({}, this.options);
+              this.options[opt.key] = v;
+              this.newGameWith(before);
             })))));
       }
 

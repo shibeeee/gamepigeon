@@ -14,8 +14,6 @@
     L.maskArr = L.mask ? L.mask.split('').map((c) => c === '1') : null;
   }
 
-  // Letter bag weighted roughly like English text, for the "Random" button.
-  const BAG = 'EEEEEEEEEEEETTTTTTTTTAAAAAAAAOOOOOOOIIIIIIINNNNNNNSSSSSSHHHHHHRRRRRRDDDDLLLLCCCUUUMMWWFFGGYYPPBVKJXQZ';
 
   function mount(root) {
     const st = Object.assign({ layout: '4x4', letters: {}, used: [], view: 'list', maxLen: 12, autoTick: true },
@@ -54,8 +52,6 @@
             const L = LAYOUTS[st.layout];
             GP.lettersFromScreenshot({ rows: L.count / L.cols, cols: L.cols, mask: L.maskArr, key: 'wordhunt-' + st.layout, done: (letters) => tiles.setAll(letters) });
           } }),
-          GP.button('Type letters', { icon: 'paste', onclick: () => GP.pasteDialog(LAYOUTS[st.layout].count, (t) => tiles.fill(t, 0)) }),
-          GP.button('Random', { icon: 'shuffle', onclick: randomize, title: 'Fill with random letters to practice' }),
           GP.button('Clear', { icon: 'trash', kind: 'ghost', onclick: clearBoard }))),
       h('aside', { class: 'panel' }, side)));
 
@@ -136,13 +132,12 @@
           GP.segmented([6, 8, 10, 12].map((n) => ({ value: n, label: n === 12 ? 'Any' : String(n) })), st.maxLen, (v) => { st.maxLen = v; save(); solve(); })),
         h('div', { class: 'field' }, h('label', null, 'Order in one-at-a-time view'),
           GP.segmented([{ value: 'score', label: 'Most points first' }, { value: 'route', label: 'Smooth route' }], st.order || 'score', (v) => { st.order = v; save(); renderFocus(); })),
-        GP.toggle('Tick words off as I go', st.autoTick, (v) => { st.autoTick = v; save(); }, 'In one-at-a-time view')));
+        GP.toggle('Cross off words as I go', st.autoTick, (v) => { st.autoTick = v; save(); }, 'In one-at-a-time view')));
 
       if (filledCount != null) {
         const total = L.maskArr ? L.maskArr.filter(Boolean).length : L.count;
         side.appendChild(h('div', { class: 'card empty-card' },
-          h('div', { class: 'big-emoji' }, '🔤'),
-          h('p', null, filledCount ? `Keep going: ${filledCount} of ${total} letters entered.` : 'Type the letters from your board. The words appear as soon as every tile is filled.')));
+          h('p', null, filledCount ? `${filledCount} of ${total} letters in.` : 'Type the letters from your board, or use a screenshot. Words show up once every tile is filled.')));
         renderFocus();
         return;
       }
@@ -193,13 +188,13 @@
         focusHost.appendChild(h('div', { class: 'card focus-card compact' },
           h('div', { class: 'focus-word' }, w.toUpperCase()),
           h('div', { class: 'focus-meta' }, GP.fmt(selected.score) + ' points · start on the green tile'),
-          h('div', { class: 'btn-row' }, GP.button(used.has(w) ? 'Untick' : 'Tick off', { icon: 'check', kind: 'primary', onclick: () => toggleUsed(w) }))));
+          h('div', { class: 'btn-row' }, GP.button(used.has(w) ? 'Undo cross-off' : 'Cross off', { icon: 'check', kind: 'primary', onclick: () => toggleUsed(w) }))));
         return;
       }
       if (st.view !== 'focus' || !results.length) return;
       const queue = ordered().filter((x) => !used.has(x.word) || x === selected);
       if (!queue.length) {
-        focusHost.appendChild(h('div', { class: 'card focus-card' }, h('p', null, 'All done! Every word is ticked off.'),
+        focusHost.appendChild(h('div', { class: 'card focus-card' }, h('p', null, 'That\'s every word.'),
           GP.button('Start over', { icon: 'refresh', onclick: () => { used.clear(); st.used = []; save(); renderSide(); } })));
         return;
       }
@@ -254,13 +249,6 @@
       overlay.appendChild(h('svg:circle', { cx: end[0], cy: end[1], r: 6, class: 'wh-dot end' }));
     }
 
-    function randomize() {
-      const L = LAYOUTS[st.layout];
-      let text = '';
-      for (let i = 0; i < L.count; i++) if (!L.maskArr || L.maskArr[i]) text += BAG[Math.floor(Math.random() * BAG.length)];
-      tiles.fill(text, 0);
-      GP.sound.play('flip');
-    }
 
     function clearBoard() {
       const before = (st.letters[st.layout] || []).slice();
@@ -298,13 +286,11 @@
     tagline: 'Every word, and how to swipe it',
     category: 'word',
     color: '#e0a100',
-    help: `<p>Connect neighboring tiles (including diagonals) to spell words. Each tile can be
-      used once per word. Longer words score far more.</p>
-      <ul><li>Type your board's letters. Words appear as soon as every tile is filled.</li>
-      <li>Tap a word to see its path: start at the <b>green</b> tile and follow the numbers.</li>
-      <li><b>One at a time</b> view walks you through the best words in order. Use Space or
-      Enter for the next word.</li>
-      <li>Double-tap a word in the list to tick it off.</li></ul>`,
+    help: `<p>Connect touching letters (diagonals count) to make words. Each tile once per word. Longer words score a lot more.</p>
+      <ul><li>Type the letters, or tap <b>Screenshot</b> and pick a screenshot of your board.</li>
+      <li>Tap a word to see how to swipe it: start on the green tile and follow the numbers.</li>
+      <li><b>One at a time</b> shows the best words in order. Swipe or press Space for the next one.</li>
+      <li>Double-tap a word to cross it off.</li></ul>`,
     mount,
   });
 })();

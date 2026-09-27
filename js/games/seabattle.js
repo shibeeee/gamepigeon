@@ -21,7 +21,7 @@
       h('section', { class: 'play-area' }, statusEl, boardHost,
         h('div', { class: 'btn-row' },
           GP.button('Undo', { icon: 'undo', onclick: undo, title: 'Undo (Ctrl+Z)' }),
-          GP.button('New game', { icon: 'refresh', kind: 'primary', onclick: () => confirmReset(st.size) }))),
+          GP.button('New game', { icon: 'refresh', kind: 'primary', onclick: () => newGame(st.size) }))),
       h('aside', { class: 'panel' }, side)));
 
     const col = (i) => GP.letters[i % st.size] + (Math.floor(i / st.size) + 1);
@@ -39,10 +39,13 @@
       save();
       render();
     }
-    function confirmReset(size) {
-      const go = () => { Object.assign(st, fresh(size), { undo: [] }); save(); render(); GP.sound.play('pop'); };
-      if (st.cells.some((v) => v !== UNKNOWN)) GP.confirm('Start a new game?', 'The board will be cleared.', 'New game', go);
-      else go();
+    function newGame(size) {
+      const before = JSON.parse(JSON.stringify({ size: st.size, cells: st.cells, remaining: st.remaining, undo: st.undo }));
+      const had = st.cells.some((v) => v !== UNKNOWN);
+      Object.assign(st, fresh(size), { undo: [] });
+      save();
+      render();
+      if (had) GP.toast('New game', null, { label: 'Undo', onclick: () => { Object.assign(st, before); save(); render(); } });
     }
 
     function mark(i, state) {
@@ -91,9 +94,22 @@
     function render() {
       closePopover();
       const n = st.size;
-      // Simulated fleets give real chances; the counting method is the fallback.
-      const sim = Object.values(st.remaining).some((x) => x > 0) ? SB.simulate(n, st.cells, st.remaining, 160) : null;
-      const a = sim ? { score: sim.prob, max: sim.max, best: sim.best, blocked: sim.blocked } : SB.analyze(n, st.cells, st.remaining);
+      // While hunting (no open hits) the counting method is smooth and exact enough;
+      // once there are hits, simulated fleets give sharper chances.
+      const hasHit = st.cells.some((v) => v === HIT);
+      const sim = hasHit && Object.values(st.remaining).some((x) => x > 0) ? SB.simulate(n, st.cells, st.remaining, 160) : null;
+      let a;
+      if (sim) a = { score: sim.prob, max: sim.max, best: sim.best, blocked: sim.blocked };
+      else {
+        // Turn counting scores into chances: spread the remaining ship squares over the board.
+        a = SB.analyze(n, st.cells, st.remaining);
+        const shipCells = Object.keys(st.remaining).reduce((t, len) => t + len * st.remaining[len], 0);
+        let sum = 0;
+        for (let i = 0; i < n * n; i++) if (st.cells[i] === UNKNOWN) sum += a.score[i];
+        const prob = new Float64Array(n * n);
+        for (let i = 0; i < n * n; i++) prob[i] = sum ? Math.min(1, (a.score[i] * shipCells) / sum) : 0;
+        a = { score: prob, max: sum ? Math.min(1, (a.max * shipCells) / sum) : 0, best: a.best, blocked: a.blocked };
+      }
       const best = new Set(a.best);
       // Stretch the colors between the weakest and strongest open cells so differences stand out.
       let min = Infinity;
@@ -118,7 +134,7 @@
             style: st.heat && heat > 0 ? { '--heat': heat.toFixed(3) } : null,
             onclick: (e) => { e.stopPropagation(); openPopover(i, cell); },
           });
-          if (st.heat && st.numbers && v === UNKNOWN && !a.blocked[i]) cell.appendChild(h('small', null, sim ? Math.round(a.score[i] * 100) + '%' : Math.round((a.score[i] / a.max) * 100)));
+          if (st.heat && st.numbers && v === UNKNOWN && !a.blocked[i]) cell.appendChild(h('small', null, Math.round(a.score[i] * 100) + '%'));
           grid.appendChild(cell);
         }
       }
@@ -133,13 +149,13 @@
       statusEl.appendChild(h('span', { class: 'status-text' }, done
         ? 'Fleet destroyed! You win.'
         : a.best.length ? 'Best shot: ' + a.best.slice(0, 3).map(col).join(', ') + (a.best.length > 3 ? ' (and ' + (a.best.length - 3) + ' more)' : '')
-          + (sim ? ' · ' + Math.round(sim.max * 100) + '% chance of a ship' : '') : 'Tap a cell to record a shot'));
+          + ' · ' + Math.round(a.max * 100) + '% chance' : 'Tap a square after each shot'));
 
       // Side panel
       GP.clear(side);
       const hits = st.cells.filter((v) => v === HIT || v === SUNK).length;
       side.appendChild(h('div', { class: 'card' }, h('h3', null, 'How to use'),
-        h('p', { class: 'hint-text' }, 'Fire at the glowing ', h('b', null, 'best shot'), ' in GamePigeon, then tap that cell here and choose what happened. When a ship goes down, tap one of its cells and choose ', h('b', null, 'Sunk'), '.')));
+        h('p', { class: 'hint-text' }, 'Fire at a square with a star in GamePigeon. Then tap that square here and pick what happened. When a ship sinks, tap one of its squares and pick ', h('b', null, 'Sunk'), '.')));
 
       const fleet = h('div', { class: 'fleet' });
       Object.keys(SB.FLEETS[n]).map(Number).sort((x, y) => y - x).forEach((len) => {
@@ -151,7 +167,7 @@
             GP.button('', { icon: 'prev', kind: 'ghost', title: 'One fewer', disabled: left <= 0, onclick: () => { remember(); st.remaining[len] = left - 1; save(); render(); } }),
             GP.button('', { icon: 'next', kind: 'ghost', title: 'One more', disabled: left >= total, onclick: () => { remember(); st.remaining[len] = left + 1; save(); render(); } }))));
       });
-      side.appendChild(h('div', { class: 'card' }, h('h3', null, 'Enemy fleet'), fleet,
+      side.appendChild(h('div', { class: 'card' }, h('h3', null, 'Their ships'), fleet,
         h('div', { class: 'stats-row' },
           h('div', null, h('b', null, shots), h('small', null, 'shots')),
           h('div', null, h('b', null, hits), h('small', null, 'hits')),
@@ -159,9 +175,9 @@
 
       side.appendChild(h('div', { class: 'card' }, h('h3', null, 'Board'),
         h('div', { class: 'field' }, h('label', null, 'Size'),
-          GP.segmented([8, 9, 10].map((x) => ({ value: x, label: x + ' × ' + x })), st.size, (v) => { confirmReset(v); setTimeout(render, 0); })),
+          GP.segmented([8, 9, 10].map((x) => ({ value: x, label: x + ' × ' + x })), st.size, (v) => { newGame(v); setTimeout(render, 0); })),
         GP.toggle('Heat map', st.heat, (v) => { st.heat = v; save(); render(); }, 'Brighter means more likely to hide a ship'),
-        GP.toggle('Show chances', st.numbers, (v) => { st.numbers = v; save(); render(); }, 'Chance that each cell hides a ship, from thousands of simulated fleets')));
+        GP.toggle('Show chances', st.numbers, (v) => { st.numbers = v; save(); render(); }, 'The chance each square hides a ship')));
     }
 
     const onDoc = (e) => { if (popover && !popover.contains(e.target)) closePopover(); };
@@ -181,14 +197,10 @@
     tagline: 'Know where to fire next',
     category: 'board',
     color: '#0e8fd6',
-    help: `<p>Like Battleship: find and sink your opponent's hidden fleet. Ships are straight,
-      1 to 4 tiles long, and never touch each other, not even at the corners. A hit lets you
-      fire again.</p>
-      <ul><li>The heat map shows how many ways the remaining ships could cover each cell.
-      The brightest cells are your best shots.</li>
-      <li>Tap a cell to mark it <b>Miss</b>, <b>Hit</b> or <b>Sunk</b>. Marking a ship sunk
-      removes it from the fleet and rules out the cells around it.</li>
-      <li>Board sizes and fleets match GamePigeon's 8×8, 9×9 and 10×10 modes.</li></ul>`,
+    help: `<p>Like Battleship. Ships are straight, 1 to 4 squares long, and never touch, not even at the corners.</p>
+      <ul><li>Fire at the square with the star. Then tap that square here and pick <b>Miss</b>, <b>Hit</b> or <b>Sunk</b>.</li>
+      <li>Brighter squares are more likely to hide a ship. Turn on <b>Show chances</b> to see the numbers.</li>
+      <li>Board sizes and ships match GamePigeon's 8×8, 9×9 and 10×10 games.</li></ul>`,
     mount,
   });
 })();

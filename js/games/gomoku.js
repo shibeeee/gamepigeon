@@ -97,12 +97,10 @@
     tagline: 'Five stones in a row',
     category: 'board',
     color: '#c98a3a',
-    help: `<p>Players take turns placing stones on the intersections. The first to get
-      <b>five in a row</b> in any direction wins. Black moves first.</p>
-      <ul><li>The pulsing ring shows the AI's suggestion.</li>
-      <li>Watch for an <b>open three</b> (three in a row with both ends free). If it isn't
-      blocked it becomes an unstoppable open four.</li>
-      <li>Use <b>Edit</b> to copy a game that's already in progress on GamePigeon.</li></ul>`,
+    help: `<p>Take turns placing stones. First to get five in a row wins. Black goes first.</p>
+      <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
+      <li>Red circles show where they can win or make a four you can't stop. Block those first.</li>
+      <li>Joining a game already going? Tap <b>Edit</b> and copy the board.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });
 })();

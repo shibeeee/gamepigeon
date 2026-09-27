@@ -30,6 +30,7 @@ jobs:
           mkdir -p dist/pigeon-pal
           cp -r index.html css js data icons vendor manifest.webmanifest sw.js README.md LICENSE THIRD_PARTY.md dist/pigeon-pal/
           rm -f dist/pigeon-pal/data/c4book-*.js
+          sed -i "s/__BUILD__/${VERSION}/g" dist/pigeon-pal/index.html
           cd dist && zip -qr "pigeon-pal-${VERSION}.zip" pigeon-pal
       - name: Publish the release
         env:

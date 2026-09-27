@@ -85,7 +85,7 @@
     const oh = ch ^ mh, ol = cl ^ ml;
     // possible drops: (mask + bottom) & board
     const posL = (ml + BOTTOMS_L) & BOARD_L;
-    // carry: column 3's top bit overflow goes to bit 28 which is column 4 bit 0 — cannot happen
+    // carry: column 3's top bit overflow goes to bit 28 which is column 4 bit 0: that can't happen
     // because the spare row keeps columns separate, so halves never carry.
     const posH = (mh + BOTTOMS_H) & BOARD_H;
     winningCells(oh, ol, mh, ml);

@@ -158,8 +158,11 @@
       moveLabel: (m) => 'Pit ' + (m + 1),
       evalScale: 600,
       options: [{
-        key: 'pebbles', label: 'Pebbles per pit', default: 4,
-        choices: [3, 4, 5, 6].map((n) => ({ value: n, label: String(n) })),
+        key: 'pebbles', label: 'Pebbles in each pit', default: 4,
+        choices: [2, 3, 4, 5, 6, 8].map((n) => ({ value: n, label: String(n) })).concat({ value: 'random', label: 'Random' }),
+      }, {
+        key: 'range', label: 'Random between', default: '2-6', showIf: (o) => o.pebbles === 'random',
+        choices: ['1-4', '2-6', '3-8', '1-10'].map((r) => ({ value: r, label: r.replace('-', ' and ') })),
       }],
       render,
       threats(s, me) {
@@ -208,10 +211,6 @@
     };
   }
 
-  const rules = `<p>Each player has six pits and a store (the big pit on their right). On your
-    turn, pick up every pebble in one of your pits and drop them one by one counter-clockwise,
-    into your own store but never your opponent's. If the last pebble lands in your store you
-    go again. The game ends when one side is empty; the most pebbles in the store wins.</p>`;
 
   GP.registerGame({
     id: 'mancala-capture',
@@ -219,10 +218,10 @@
     tagline: 'Classic rules with captures',
     category: 'board',
     color: '#b5651d',
-    help: rules + `<p><b>Capture:</b> if your last pebble lands in an empty pit on your side,
-      you take it plus everything in the pit across from it.</p>
-      <ul><li>Your side is always at the bottom. Keys <kbd>1</kbd>-<kbd>6</kbd> pick your pits from left to right.</li>
-      <li>Use <b>Edit</b> to type in a game already in progress.</li></ul>`,
+    help: `<p>Pick up all the pebbles in one of your pits and drop them one by one around the board, into your store but not theirs. End in your store and you go again. Most pebbles in your store wins.</p>
+      <p>Land in an empty pit on your side and you take it plus everything across from it.</p>
+      <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
+      <li>Turn on <b>Preview</b> to watch a move before you make it.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, makeCfg('capture')),
   });
 
@@ -232,10 +231,9 @@
     tagline: 'Chain reactions, huge turns',
     category: 'board',
     color: '#8e44ad',
-    help: rules + `<p><b>Avalanche:</b> if your last pebble lands in a pit that already had
-      pebbles, you scoop them all up and keep going. Your turn only ends in an empty pit.
-      Turns can get long, so let the AI trace the chain for you.</p>
-      <ul><li>Your side is always at the bottom. Keys <kbd>1</kbd>-<kbd>6</kbd> pick your pits from left to right.</li></ul>`,
+    help: `<p>Like regular Mancala, but if your last pebble lands in a pit with pebbles in it, you pick them all up and keep going. Your turn ends in an empty pit.</p>
+      <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
+      <li>Turns can get long. Turn on <b>Preview</b> to watch the whole chain.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, makeCfg('avalanche')),
   });
 })();

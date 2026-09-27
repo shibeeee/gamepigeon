@@ -8,16 +8,14 @@ offline too.
 
 ## New in this version
 
-- **New games:** Chess (powered by Stockfish), Checkers, Dots and Boxes, and Filler
-- **Bot mode for real matches:** enter your opponent's move (usually one tap from a list of likely moves) and the bot answers; turn on "Bot plays my moves" and it plays your side on its own
-- **Perfect Four in a Row:** an exact solver plus an opening book; every column is labeled Win, Draw or Lose
-- **Stronger AIs:** Gomoku finds forced wins, Mancala follows extra turns and captures to the end
-- **Threat warnings** in red on every board game
-- **Game review** that marks blunders and mistakes and shows the better move
-- **Screenshot reading** for Word Hunt, Anagrams and Filler, all on your device
-- **Sea Battle** now shows real chances from thousands of simulated fleets
-- Mancala move preview, Word Hunt "smooth route" order, type-all-letters box, swipe gestures
-- Larger text, high contrast, reduced motion, and a short welcome tour
+- Cleaner, calmer design and simpler wording everywhere
+- Only the buttons you need: Undo, Redo, Edit and New. The best move always shows under the board with a Play it button
+- No more pop-ups when you open a game; small tips you can close instead. New game can be undone
+- Drag chess pieces (tapping still works)
+- Mancala: 2 to 8 pebbles per pit, or random with the range you pick
+- Updates now load cleanly: the app always fetches fresh files when you're online, so you never get a half-updated page
+- The "Add to Home Screen" tip only shows on phones and tablets
+- More Four in a Row openings solved perfectly
 
 ## What's inside
 

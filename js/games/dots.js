@@ -113,15 +113,10 @@
     tagline: 'Close boxes, dodge chains',
     category: 'board',
     color: '#5c6bc0',
-    help: `<p>Take turns drawing a line between two neighboring dots. Draw the fourth side of a box
-      and it's yours, and you go again. Most boxes wins.</p>
-      <ul><li>Tap between two dots to draw a line.</li>
-      <li>Early on, avoid drawing a box's third side. Red lines show which moves would hand your
-      opponent a box.</li>
-      <li>Late in the game, the AI may give away two boxes on purpose to keep control of the long
-      chains. That's usually the winning trick.</li>
-      <li>Joining a game in progress? Use <b>Edit</b> and tap lines to draw them. Finished boxes go to
-      whoever is set to move, so switch sides as you go.</li></ul>`,
+    help: `<p>Take turns drawing a line between two dots. Finish a box and it's yours, and you go again. Most boxes wins.</p>
+      <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
+      <li>Red lines would give them a box. Avoid them while you can.</li>
+      <li>Near the end, the bot sometimes gives away two boxes on purpose. That's usually how you win the rest.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });
 })();

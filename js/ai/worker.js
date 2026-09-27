@@ -1,16 +1,17 @@
 /* Runs engine searches off the main thread so the page never freezes. */
+const V = self.location.search; // same build id as the page
 importScripts(
-  '../engines/common.js',
-  '../engines/c4solver.js',
-  '../../data/c4book.js',
-  '../engines/connect4.js',
-  '../engines/othello.js',
-  '../engines/gomoku.js',
-  '../engines/tictactoe.js',
-  '../engines/mancala.js',
-  '../engines/checkers.js',
-  '../engines/dots.js',
-  '../engines/filler.js'
+  '../engines/common.js' + V,
+  '../engines/c4solver.js' + V,
+  '../../data/c4book.js' + V,
+  '../engines/connect4.js' + V,
+  '../engines/othello.js' + V,
+  '../engines/gomoku.js' + V,
+  '../engines/tictactoe.js' + V,
+  '../engines/mancala.js' + V,
+  '../engines/checkers.js' + V,
+  '../engines/dots.js' + V,
+  '../engines/filler.js' + V
 );
 
 self.onmessage = function (e) {

@@ -3,6 +3,10 @@
   'use strict';
   const GP = (window.GP = window.GP || {});
 
+  // Build id (set at publish time) so every file of one version is fetched together.
+  const buildMeta = document.querySelector('meta[name="build"]');
+  GP.BUILD = buildMeta ? buildMeta.content : 'dev';
+
   /* ---------- Storage (everything saves automatically) ---------- */
   const PREFIX = 'gp:';
   GP.store = {
@@ -42,7 +46,7 @@
   /* ---------- Settings ---------- */
   const DEFAULTS = {
     theme: 'system',
-    accent: 'violet',
+    accent: 'blue',
     sound: true,
     haptics: true,
     animations: true,
@@ -313,7 +317,7 @@
     if (workerBroken) return null;
     if (worker) return worker;
     try {
-      worker = new Worker('js/ai/worker.js');
+      worker = new Worker('js/ai/worker.js?v=' + GP.BUILD);
       worker.onmessage = (e) => {
         const p = pending.get(e.data.id);
         if (!p) return;
@@ -377,7 +381,7 @@
     if (!wordsPromise) {
       wordsPromise = new Promise((resolve, reject) => {
         const s = document.createElement('script');
-        s.src = 'data/words.js';
+        s.src = 'data/words.js?v=' + GP.BUILD;
         s.onload = () => { GP.words.init(window.GP_WORDS); window.GP_WORDS = null; resolve(); };
         s.onerror = () => { wordsPromise = null; reject(new Error('Could not load the word list')); };
         document.head.appendChild(s);

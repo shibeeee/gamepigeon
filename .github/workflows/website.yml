@@ -32,6 +32,8 @@ jobs:
           mkdir /tmp/site
           cp -r index.html css js data icons vendor manifest.webmanifest sw.js LICENSE THIRD_PARTY.md /tmp/site/
           rm -f /tmp/site/data/c4book-*.js
+          # Stamp this build's id on every file URL so browsers never mix versions.
+          sed -i "s/__BUILD__/${GITHUB_SHA::8}/g" /tmp/site/index.html
           touch /tmp/site/.nojekyll
           cd /tmp/site
           git init -q -b gh-pages

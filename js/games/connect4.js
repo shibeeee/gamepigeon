@@ -8,7 +8,7 @@
   function columnVerdict(score, solved) {
     if (score >= GP.DECISIVE) return { cls: 'good', text: 'Win' };
     if (score <= -GP.DECISIVE) return { cls: 'bad', text: 'Lose' };
-    return { cls: 'mid', text: solved ? 'Draw' : GP.describeScore(score, 50) };
+    return { cls: 'mid', text: solved ? 'Tie' : GP.describeScore(score, 50) };
   }
 
   function render(host, v) {
@@ -117,13 +117,10 @@
     tagline: 'Drop discs, line up four',
     category: 'board',
     color: '#2f7bff',
-    help: `<p>Take turns dropping discs into the 7 columns. The first to line up
-      <b>four in a row</b> (across, down or diagonally) wins.</p>
-      <ul><li>Tap a column to drop a disc. Keys <kbd>1</kbd>-<kbd>7</kbd> work too.</li>
-      <li>The glowing column is the AI's pick. Under each column you'll see whether it
-      <b>wins</b>, <b>loses</b> or scores higher or lower.</li>
-      <li>Playing on GamePigeon? Choose <b>Real person</b>, pick your color, then enter
-      both players' moves as they happen.</li></ul>`,
+    help: `<p>Drop discs into the columns. First to get four in a row wins.</p>
+      <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
+      <li>Under each column you'll see if it wins, loses or ties with perfect play.</li>
+      <li>Red means danger: a column they can win in, or one that sets up their win.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });
 })();

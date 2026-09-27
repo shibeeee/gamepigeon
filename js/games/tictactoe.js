@@ -15,7 +15,7 @@
   function verdict(score) {
     if (score >= GP.DECISIVE) return ['good', 'Win'];
     if (score <= -GP.DECISIVE) return ['bad', 'Lose'];
-    return ['mid', 'Draw'];
+    return ['mid', 'Tie'];
   }
 
   function render(host, v) {
@@ -78,14 +78,12 @@
   GP.registerGame({
     id: 'tictactoe',
     name: 'Tic Tac Toe',
-    tagline: 'The AI never loses',
+    tagline: 'The bot never loses',
     category: 'board',
     color: '#ff4f93',
-    help: `<p>Get three of your marks in a row. The AI searches every possible game, so it
-      plays perfectly: the best you can do against it is a draw.</p>
-      <ul><li>With hints on, every empty square is labeled <b>Win</b>, <b>Draw</b> or
-      <b>Lose</b> for you, assuming perfect play afterwards.</li>
-      <li>Keys <kbd>1</kbd>-<kbd>9</kbd> pick squares, left to right, top to bottom.</li></ul>`,
+    help: `<p>Get three in a row. The bot plays perfectly, so the best you can do against it is a tie.</p>
+      <ul><li>Empty squares are labeled <b>Win</b>, <b>Tie</b> or <b>Lose</b> for you.</li>
+      <li>Keys 1 to 9 pick squares, left to right, top to bottom.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });
 })();

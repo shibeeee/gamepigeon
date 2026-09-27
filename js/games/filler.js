@@ -98,12 +98,10 @@
     tagline: 'Pick colors, grab the board',
     category: 'board',
     color: '#26a69a',
-    help: `<p>You start in the bottom-left corner, your opponent in the top-right. Each turn, pick a
-      color: your whole area turns that color and swallows every touching square of it. You can't pick
-      your color or your opponent's. Own more than half the board to win.</p>
-      <ul><li>Each color button shows how many squares it grabs right now. The glowing one is the AI's
-      pick, which looks many turns ahead (grabbing the most now isn't always best).</li>
-      <li>To copy a real game, tap <b>Edit</b>, then <b>From screenshot</b>, or paint the squares by hand.</li></ul>`,
+    help: `<p>You start bottom left, they start top right. Each turn, pick a color: your area turns that color and takes every touching square of it. Own more than half to win.</p>
+      <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
+      <li>Each color shows how many squares it takes right now. The best pick looks many turns ahead.</li>
+      <li>To copy a real game, tap <b>Edit</b>, then <b>From screenshot</b>.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });
 })();

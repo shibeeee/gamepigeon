@@ -44,7 +44,9 @@
         if (name === checkSq) cls.push('check');
         if (threats.has(name)) cls.push('threat');
         const cell = h('button', { type: 'button', class: cls.join(' '), 'aria-label': name + (p ? ' ' + (p.color === 'w' ? 'white ' : 'black ') + NAMES[p.type] : ''),
-          onclick: () => click(v, name, p, g) });
+          dataset: { sq: name },
+          // Keyboard users (Enter/Space) still get a click; pointers are handled by the board.
+          onclick: (e) => { if (e.detail === 0) click(v, name, p, g); } });
         if (p) cell.appendChild(piece(p, v.animate && s.last && s.last.slice(2, 4) === name ? 'pop' : ''));
         if (cc === 0) cell.appendChild(h('i', { class: 'rank' }, 8 - r));
         if (rr === 7) cell.appendChild(h('i', { class: 'file' }, FILES[c]));
@@ -52,6 +54,7 @@
       }
     }
     const wrap = h('div', { class: 'chess-wrap' }, grid);
+    bindPointer(grid, wrap, v, g, board, flip);
     if (hint.length) wrap.appendChild(arrow(hint[0], hint[1], flip));
     host.appendChild(capturedBar(g, 1 - v.me));
     host.appendChild(wrap);
@@ -103,7 +106,7 @@
     if (sel) {
       const opts = legal.filter((m) => m.startsWith(sel + name));
       if (opts.length === 1) { const m = opts[0]; sel = null; v.onMove(m); return; }
-      if (opts.length > 1) { promote(opts, v); return; }
+      if (opts.length > 1) { promote(opts, v, name, null, v.me === 1); return; }
     }
     const turn = g.turn();
     if (p && p.color === turn && legal.some((m) => m.startsWith(name))) { sel = name; GP.sound.play('click'); }
@@ -111,12 +114,74 @@
     v.game.renderBoard();
   }
 
-  function promote(opts, v) {
+  /*
+   * Tap a piece then a square, or drag the piece. One pointer handler covers
+   * mouse, finger and pen: a short press is a tap, anything else a drag.
+   */
+  function bindPointer(grid, wrap, v, g, board, flip) {
+    const at = (x, y) => { const el = document.elementFromPoint(x, y); const c = el && el.closest('.csq'); return c && grid.contains(c) ? c.dataset.sq : null; };
+    const pieceAt = (name) => { const r = 8 - +name[1], c = FILES.indexOf(name[0]); return board[r][c]; };
+    grid.addEventListener('pointerdown', (e) => {
+      const from = at(e.clientX, e.clientY);
+      if (!from) return;
+      const p = pieceAt(from);
+      const canDrag = !v.editing && v.canPlay && p && p.color === g.turn() && v.legal.some((m) => m.startsWith(from));
+      const start = { x: e.clientX, y: e.clientY, from, p, drag: null };
+      e.preventDefault();
+      grid.setPointerCapture(e.pointerId);
+      const move = (ev) => {
+        if (!canDrag) return;
+        if (!start.drag && Math.hypot(ev.clientX - start.x, ev.clientY - start.y) < 6) return;
+        if (!start.drag) {
+          // Lift the piece: show where it can go and follow the pointer.
+          sel = from;
+          const cell = grid.querySelector('[data-sq="' + from + '"]');
+          const size = cell.getBoundingClientRect().width;
+          const dests = v.legal.filter((m) => m.startsWith(from)).map((m) => m.slice(2, 4));
+          grid.querySelectorAll('.csq').forEach((c) => {
+            if (dests.includes(c.dataset.sq)) c.classList.add(pieceAt(c.dataset.sq) ? 'capture' : 'dest');
+          });
+          cell.classList.add('sel', 'lifted');
+          start.drag = document.body.appendChild(h('span', { class: 'drag-piece', style: { width: size + 'px', height: size + 'px' } }, piece(p)));
+        }
+        start.drag.style.transform = `translate(${ev.clientX}px, ${ev.clientY}px)`;
+      };
+      const up = (ev) => {
+        grid.removeEventListener('pointermove', move);
+        grid.removeEventListener('pointerup', up);
+        grid.removeEventListener('pointercancel', up);
+        if (!start.drag) { click(v, from, p, g); return; } // a tap
+        start.drag.remove();
+        const to = ev.type === 'pointerup' ? at(ev.clientX, ev.clientY) : null;
+        const opts = to && to !== from ? v.legal.filter((m) => m.startsWith(from + to)) : [];
+        if (opts.length === 1) { sel = null; v.onMove(opts[0]); return; }
+        if (opts.length > 1) { promote(opts, v, to, wrap, flip); return; }
+        sel = to === from ? from : null;
+        v.game.renderBoard();
+      };
+      grid.addEventListener('pointermove', move);
+      grid.addEventListener('pointerup', up);
+      grid.addEventListener('pointercancel', up);
+    });
+  }
+
+  /* A small menu next to the promotion square: queen, rook, bishop or knight. */
+  function promote(opts, v, to, wrap, flip) {
+    wrap = wrap || GP.$('.chess-wrap');
+    to = to || opts[0].slice(2, 4);
     const color = v.state.turn === 0 ? 'w' : 'b';
-    const m = GP.modal('Promote to', h('div', { class: 'promo' }, ['q', 'r', 'b', 'n'].map((t) => h('button', {
-      type: 'button', class: 'promo-btn', 'aria-label': NAMES[t],
-      onclick: () => { m.close(); sel = null; v.onMove(opts.find((x) => x[4] === t)); },
-    }, piece({ type: t, color }), h('small', null, NAMES[t])))), []);
+    let c = FILES.indexOf(to[0]), r = 8 - +to[1];
+    if (flip) { c = 7 - c; r = 7 - r; }
+    // Open downward from a top square, upward from a bottom one.
+    const place = r < 4 ? { top: (r / 8) * 100 + '%' } : { bottom: ((7 - r) / 8) * 100 + '%' };
+    const close = () => { menu.remove(); document.removeEventListener('pointerdown', outside, true); };
+    const outside = (e) => { if (!menu.contains(e.target)) { close(); sel = null; v.game.renderBoard(); } };
+    const menu = h('div', { class: 'promo', role: 'menu', style: Object.assign({ left: (c / 8) * 100 + '%' }, place) }, ['q', 'r', 'b', 'n'].map((t) => h('button', {
+      type: 'button', class: 'promo-btn', title: NAMES[t], 'aria-label': 'Promote to ' + NAMES[t],
+      onclick: () => { close(); sel = null; v.onMove(opts.find((x) => x[4] === t)); },
+    }, piece({ type: t, color }))));
+    wrap.appendChild(menu);
+    setTimeout(() => document.addEventListener('pointerdown', outside, true), 0);
   }
 
   /* Board editor: place any piece, keeping castling rights consistent. */
@@ -219,14 +284,12 @@
     tagline: 'Stockfish in your pocket',
     category: 'board',
     color: '#8d6e63',
-    help: `<p>Standard chess. The coach is <b>Stockfish</b>, one of the strongest chess engines in the
-      world, running right on your device.</p>
-      <ul><li>Tap a piece, then tap where it should go. Dots show legal moves.</li>
-      <li>The arrow shows the best move. Red squares warn about your pieces that can be taken for free.</li>
-      <li>Playing someone on GamePigeon? Choose <b>Real person</b> and enter their moves as they happen,
-      or turn on <b>Bot plays my moves</b> so you only enter theirs.</li>
-      <li>Use <b>Edit</b> to set up any position, or paste a FEN.</li>
-      <li>The engine is about 7 MB and downloads the first time you open chess.</li></ul>`,
+    help: `<p>Regular chess. Your coach is Stockfish, one of the strongest chess programs there is.</p>
+      <ul><li>Drag a piece to move it, or tap it and then tap where it goes.</li>
+      <li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
+      <li>The green arrow is the best move. Red squares are your pieces that can be taken for free.</li>
+      <li>Tap <b>Edit</b> to set up any position, or paste a FEN.</li>
+      <li>The first time, chess downloads about 7 MB.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });
 })();

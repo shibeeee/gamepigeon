@@ -128,12 +128,10 @@
     tagline: 'Jump, crown, conquer',
     category: 'board',
     color: '#d84315',
-    help: `<p>Move diagonally forward one square. Jump over an opponent's piece to capture it, and keep
-      jumping if you can. Reach the far side to become a king, which moves both ways. Take all of your
-      opponent's pieces, or leave them without a move, to win.</p>
-      <ul><li>Tap a piece, then tap where it goes. For a double jump, tap each landing square.</li>
-      <li>Numbers on the board show the AI's suggested path. Red squares warn about pieces that can be jumped.</li>
-      <li>If your GamePigeon game lets you skip jumps, set <b>Jumps are: Optional</b>.</li></ul>`,
+    help: `<p>Move diagonally forward. Jump over a piece to take it, and keep jumping if you can. Reach the far side to get a king, which moves both ways.</p>
+      <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
+      <li>Tap a piece, then where it goes. For a double jump, tap each landing square.</li>
+      <li>If your game lets you skip jumps, set <b>Jumps</b> to <b>Optional</b>.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });
 })();

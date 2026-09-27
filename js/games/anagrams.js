@@ -2,7 +2,6 @@
 (function () {
   'use strict';
   const GP = window.GP, h = GP.h;
-  const VOWELS = 'AAEEEIIOOU', CONSONANTS = 'BCDDFGHLLMNNPRRSSSTTTWY';
 
   function mount(root) {
     const st = Object.assign({ count: 6, letters: [], used: [], usedKey: '' }, GP.store.get('anagrams', {}));
@@ -14,6 +13,7 @@
     let tiles;
 
     const tileHost = h('div', { class: 'ana-rack' });
+    const quickHost = h('div', { class: 'quick-host' });
     const preview = h('div', { class: 'ana-preview' });
     const side = h('div', { class: 'wh-side' });
 
@@ -23,12 +23,11 @@
           st.count = v; save(); build(); solve();
         }), GP.roundTimer('anagrams')),
         tileHost,
+        quickHost,
         h('div', { class: 'btn-row' },
           GP.button('Screenshot', { icon: 'upload', title: 'Read the letters from a screenshot', onclick: () => {
             GP.lettersFromScreenshot({ rows: 1, cols: st.count, key: 'anagrams-' + st.count, done: (letters) => tiles.setAll(letters) });
           } }),
-          GP.button('Type letters', { icon: 'paste', onclick: () => GP.pasteDialog(st.count, (t) => tiles.fill(t, 0)) }),
-          GP.button('Random', { icon: 'shuffle', onclick: randomize }),
           GP.button('Clear', { icon: 'trash', kind: 'ghost', onclick: () => {
             const before = st.letters.slice();
             if (before.some(Boolean)) GP.toast('Letters cleared', null, { label: 'Undo', onclick: () => { st.letters = before; save(); build(); solve(); } });
@@ -50,6 +49,7 @@
         onChange: (v) => { st.letters = v; save(); solve(); },
       });
       tileHost.appendChild(tiles.el);
+      GP.clear(quickHost).appendChild(GP.quickEntry(st.count, () => tiles));
     }
 
     function solve() {
@@ -90,7 +90,7 @@
         h('div', { class: 'spell' }, item.word.toUpperCase().split('').map((ch, i) => h('span', { class: 'spell-tile', style: { animationDelay: i * 60 + 'ms' } }, ch))),
         h('div', { class: 'focus-meta' }, GP.fmt(item.score) + ' points'),
         h('div', { class: 'btn-row' },
-          GP.button(used.has(item.word) ? 'Untick' : 'Tick off', { icon: 'check', kind: 'primary', onclick: () => toggle(item.word) }))));
+          GP.button(used.has(item.word) ? 'Undo cross-off' : 'Cross off', { icon: 'check', kind: 'primary', onclick: () => toggle(item.word) }))));
     }
 
     function toggle(word) {
@@ -104,8 +104,7 @@
     function render(filled) {
       GP.clear(side);
       if (filled != null) {
-        side.appendChild(h('div', { class: 'card empty-card' }, h('div', { class: 'big-emoji' }, '🧩'),
-          h('p', null, filled ? `${filled} of ${st.count} letters entered.` : `Type your ${st.count} letters. Words appear instantly.`)));
+        side.appendChild(h('div', { class: 'card empty-card' },           h('p', null, filled ? `${filled} of ${st.count} letters in.` : `Type your ${st.count} letters, or use a screenshot.`)));
         return;
       }
       side.appendChild(h('div', { class: 'card grow' }, GP.wordResults({
@@ -114,16 +113,6 @@
       })));
     }
 
-    function randomize() {
-      let t = '';
-      const nv = st.count === 7 ? 3 : 2;
-      for (let i = 0; i < st.count; i++) {
-        const src = i < nv ? VOWELS : CONSONANTS;
-        t += src[Math.floor(Math.random() * src.length)];
-      }
-      tiles.fill(t.split('').sort(() => Math.random() - 0.5).join(''), 0);
-      GP.sound.play('flip');
-    }
 
     build();
     solve();
@@ -137,11 +126,10 @@
     tagline: 'Unscramble every word',
     category: 'word',
     color: '#12b3a6',
-    help: `<p>You get 6 or 7 letters. Make as many words (3 letters or longer) as you can.
-      Longer words are worth much more.</p>
-      <ul><li>Type the letters; the full list appears right away, longest first.</li>
+    help: `<p>Make as many words as you can from 6 or 7 letters. Longer words score more.</p>
+      <ul><li>Type the letters, or tap <b>Screenshot</b>. Every word shows up right away, longest first.</li>
       <li>Tap a word to see which tiles to use, in order.</li>
-      <li>Double-tap (or use <b>Tick off</b>) to cross off words you've already played.</li></ul>`,
+      <li>Double-tap a word, or tap <b>Cross off</b>.</li></ul>`,
     mount,
   });
 })();

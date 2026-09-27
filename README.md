@@ -30,10 +30,10 @@ installed, works offline once loaded, and saves everything automatically.
 
 ## Features
 
-- **Bot mode for real matches.** Choose *Real person*, enter the move your
-  opponent made (the app suggests their likely moves, so it's usually one tap)
-  and the bot shows your best reply. Turn on **Bot plays my moves** and it
-  plays your side on its own; you just copy its move into GamePigeon.
+- **Bot mode for real matches.** Choose *A friend*, tap the move your friend
+  made (the app suggests their likely moves, so it's usually one tap) and the
+  bot shows your best reply. Turn on **Bot moves for me** and it plays your
+  side on its own; you just copy its move into GamePigeon.
 - **Coach bar** under every board: the best move, why it's good ("blocks
   their win", "takes a corner, flips 5 discs", "lands in the store for
   another turn") and a **Play it** button.
@@ -45,6 +45,7 @@ installed, works offline once loaded, and saves everything automatically.
 - **Practice mode** against the computer at four strengths, with your record
   saved.
 - **Undo, redo, a clickable move list, and swipe left/right** on phones.
+- **Chess pieces drag** (or tap, then tap the square).
 - **Board editor** to copy a game that is already in progress (chess also
   takes a FEN).
 - **Screenshot reading** for Word Hunt, Anagrams and Filler. Everything runs
@@ -56,7 +57,7 @@ installed, works offline once loaded, and saves everything automatically.
   move preview that sows the pebbles step by step.
 - **Autosave**, backup and restore, light and dark themes, accent colors, a
   color-blind palette, larger text, high contrast, sound, vibration and a
-  short welcome tour.
+  few small tips you can close.
 - **Installable.** On iPhone: Share, then *Add to Home Screen*. It opens full
   screen and works offline.
 
@@ -70,7 +71,7 @@ installed, works offline once loaded, and saves everything automatically.
 - **Very strong, not proven perfect:** Checkers, Gomoku, Mancala and the rest
   of Reversi, Dots and Boxes and Filler. These games are too big to solve
   completely on a phone, so the bot searches as deep as it can in the time
-  you give it (Bot strength: Easy to Max).
+  you give it (Bot level: Easy to Best).
 
 ## Running it
 

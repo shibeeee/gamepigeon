@@ -87,12 +87,10 @@
     tagline: 'Outflank and flip',
     category: 'board',
     color: '#1f9d55',
-    help: `<p>Place a disc so that it traps a line of your opponent's discs between it and
-      another of yours. The trapped discs flip to your color. Whoever has the most discs when
-      nobody can move wins. GamePigeon calls this game Reversi, but it uses Othello rules.</p>
-      <ul><li>Dots show the legal moves. Hover over one to see which discs it would flip.</li>
-      <li>If you have no legal move, a <b>Pass</b> button appears.</li>
-      <li>Corners can never be flipped, which is why the AI loves them.</li></ul>`,
+    help: `<p>Place a disc so it traps a line of your opponent's discs between two of yours. They flip to your color. Most discs at the end wins. (GamePigeon calls it Reversi.)</p>
+      <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
+      <li>Dots show where you can play. Point at one to see what it flips.</li>
+      <li>Corners can't be flipped, so they're worth a lot. Red shows a corner they can grab.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });
 })();
