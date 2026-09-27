@@ -581,7 +581,7 @@ kbd {
 .empty-card { text-align: center; color: var(--muted); }
 .big-emoji { font-size: 2.6rem; }
 .focus-host, .wb-show { width: min(100%, 520px); }
-.focus-card { text-align: center; animation: pop-in 0.2s; }
+.focus-card { text-align: center; }
 .focus-word { font-size: clamp(2rem, 9vw, 3rem); font-weight: 900; letter-spacing: 0.08em; color: var(--accent); }
 .focus-meta { color: var(--muted); font-weight: 700; margin: 2px 0 12px; }
 
@@ -845,3 +845,28 @@ html.text-xl { font-size: 125%; }
 .contrast .btn, .contrast .seg, .contrast .card { border-width: 2px; }
 .contrast .c4 .disc, .contrast .oth .disc, .contrast .ck-piece { outline: 2px solid #000; outline-offset: -2px; }
 .contrast .tile { outline: 2px solid #4a3a14; }
+
+/* ---------- Steady layout: nothing around the board changes size ---------- */
+/* Status bubble: one line, fixed height (long text is shortened, not wrapped). */
+.status { height: 44px; white-space: nowrap; flex: none; }
+.status-text { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+.status.win, .status.lose { animation: none; }
+/* Coach bar under the board: a fixed slot, one bar at most, no pop-in. */
+.coach-slot { width: min(100%, 560px); height: 68px; flex: none; }
+.coach-slot .coach { height: 100%; width: 100%; animation: none; overflow: hidden; }
+.coach-text b { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.coach-text small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
+.coach.likely { flex-wrap: nowrap; }
+.coach.likely .coach-text small { -webkit-line-clamp: 1; }
+.likely-moves { flex-wrap: nowrap; flex: none; }
+.warn-line { color: var(--bad); font-weight: 700; }
+@media (max-width: 420px) {
+  .coach.likely .coach-text small { display: none; }
+  .likely-moves .btn-sm { padding: 4px 8px; }
+}
+/* Word games: the round timer keeps one width, and the toolbar never wraps under it. */
+.round-timer { min-width: 108px; justify-content: center; }
+/* Chess: captured-piece rows keep their height. */
+.captured { height: 24px; overflow: hidden; flex-wrap: nowrap; }
+/* Connect 4: the verdict row under the columns always takes its full height. */
+.c4-num { min-height: 36px; justify-content: flex-start; }

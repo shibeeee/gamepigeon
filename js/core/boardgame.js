@@ -365,29 +365,33 @@
 
     /* Compact hint bar under the board, so phones don't have to scroll to the panel. */
     renderCoach(el) {
+      // Always the same fixed-height slot with at most one bar in it, so the
+      // buttons and board never jump when hints or warnings come and go.
+      const slot = el.appendChild(h('div', { class: 'coach-slot' }));
       const ins = this.insight();
       const s = this.state;
       if (this.editing || this.engine.result(s)) return;
       const th = this.threats();
-      if (th && th.text) el.appendChild(h('div', { class: 'coach warn' }, h('span', { class: 'warn-icon' }, '!'), h('span', { class: 'coach-text' }, h('b', null, 'Watch out'), h('small', null, th.text))));
+      const warn = th && th.text ? h('small', { class: 'warn-line' }, 'Watch out: ' + th.text) : null;
       const likely = this.likelyMoves();
       if (likely.length && s.turn !== this.me) {
-        el.appendChild(h('div', { class: 'coach likely' }, GP.icon('bot'),
-          h('span', { class: 'coach-text' }, h('b', null, 'What did they play?'), h('small', null, 'Tap the board, or pick a likely move')),
+        slot.appendChild(h('div', { class: 'coach likely' }, GP.icon('bot'),
+          h('span', { class: 'coach-text' }, h('b', null, 'What did they play?'), h('small', null, 'Tap the board or a likely move')),
           h('span', { class: 'likely-moves' }, likely.map((m, k) => button(this.cfg.moveLabel(m, s), {
             kind: k === 0 ? 'primary' : null, class: 'btn-sm', title: k === 0 ? 'Their best move' : 'Another strong move', onclick: () => this.play(m),
           })))));
         return;
       }
       if (!ins) {
-        if (this.thinking && !(this.mode === 'ai' && s.turn !== this.me)) el.appendChild(h('div', { class: 'coach thinking' }, GP.icon('bulb'), h('span', null, 'Finding the best move'), h('span', { class: 'dots' }, h('i'), h('i'), h('i'))));
+        if (warn) slot.appendChild(h('div', { class: 'coach warn' }, h('span', { class: 'warn-icon' }, '!'), h('span', { class: 'coach-text' }, h('b', null, 'Watch out'), h('small', null, th.text))));
+        else if (this.thinking && !(this.mode === 'ai' && s.turn !== this.me)) slot.appendChild(h('div', { class: 'coach thinking' }, GP.icon('bulb'), h('span', null, 'Finding the best move'), h('span', { class: 'dots' }, h('i'), h('i'), h('i'))));
         return;
       }
       const canPlay = !(this.mode === 'ai' && s.turn !== this.me);
-      el.appendChild(h('div', { class: 'coach' + (ins.pct >= 100 ? ' good' : ins.pct <= 0 ? ' bad' : '') },
-        GP.icon('bulb'),
+      slot.appendChild(h('div', { class: 'coach' + (warn ? ' warn' : ins.pct >= 100 ? ' good' : ins.pct <= 0 ? ' bad' : '') },
+        warn ? h('span', { class: 'warn-icon' }, '!') : GP.icon('bulb'),
         h('span', { class: 'coach-text' }, h('b', null, (ins.mine ? 'Best move: ' : 'Their best: ') + ins.label),
-          h('small', null, [ins.why, ins.verdict].filter(Boolean).join(' · '))),
+          warn || h('small', null, [ins.why, ins.verdict].filter(Boolean).join(' · '))),
         canPlay ? button('Play it', { kind: 'primary', class: 'btn-sm', onclick: () => this.play(ins.res.move) }) : null));
     }
 
