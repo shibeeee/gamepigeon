@@ -1,0 +1,41 @@
+# Runs the tests on every push. On the default branch it then copies the app
+# to the gh-pages branch, which GitHub Pages serves as the website.
+name: Test and publish website
+
+on:
+  push:
+    branches-ignore: [gh-pages]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: node tests/run.js
+
+  publish:
+    needs: test
+    if: github.event_name != 'pull_request' && github.ref_name == github.event.repository.default_branch
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Copy the site into gh-pages
+        run: |
+          mkdir /tmp/site
+          cp -r index.html css js data icons manifest.webmanifest sw.js /tmp/site/
+          touch /tmp/site/.nojekyll
+          cd /tmp/site
+          git init -q -b gh-pages
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -q -m "Publish ${GITHUB_SHA::7}"
+          git push -f "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git" gh-pages

@@ -1,5 +1,7 @@
 # Pigeon Pal
 
+**Play it: https://shibeeee.github.io/gamepigeon/**
+
 A friendly coach for GamePigeon games. Type in what you see on your phone and
 Pigeon Pal shows you the best move, finds every word, or tells you where the
 enemy ships are hiding. You can also practice against a strong computer
@@ -41,10 +43,16 @@ installed, works offline once loaded, and saves everything automatically.
 
 ## Running it
 
-**Online:** push to `main` and the included GitHub Actions workflow runs the
-tests and publishes the site to GitHub Pages. Turn it on once in the repo's
-*Settings → Pages → Source: GitHub Actions*. The app will then be at
-`https://<your-user>.github.io/<repo>/`.
+**Online:** https://shibeeee.github.io/gamepigeon/
+
+Every push to the default branch runs the tests and republishes the site
+(the `Test and publish website` workflow copies the app to the `gh-pages`
+branch, which GitHub Pages serves). To publish a release with a downloadable
+zip, push a version tag:
+
+```sh
+git tag v1.0.1 && git push origin v1.0.1
+```
 
 **On your computer:**
 
