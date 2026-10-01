@@ -204,7 +204,7 @@
         if (token !== this.token || !r) return;
         const wait = Math.max(0, 350 - (Date.now() - started)); // let the last move's animation finish
         setTimeout(() => { if (token === this.token) this.play(r.move, true); }, wait);
-      }, () => {});
+      }, () => this.searchFailed(token));
     }
 
     analyze(explicit, token) {
@@ -218,7 +218,15 @@
         this.analysis = { side: s.turn, res: r, explicit };
         if (explicit) GP.sound.play('hint');
         this.render();
-      }, () => {});
+      }, () => this.searchFailed(token));
+    }
+
+    /* A search errored (not just replaced by a newer one): never leave "Thinking" up. */
+    searchFailed(token) {
+      if (token !== this.token) return;
+      this.thinking = false;
+      this.render();
+      GP.toast("The bot couldn't work this one out. Try Undo or Edit.", 'warn');
     }
 
     /*

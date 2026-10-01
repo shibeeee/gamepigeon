@@ -14,30 +14,43 @@
     return (L.horiz ? 'Across' : 'Down') + ' row ' + (L.r + 1) + ', col ' + (L.c + 1);
   }
 
+  /* Who drew each line, from the move history (lines added in the editor have no owner). */
+  function lineOwners(game, s) {
+    const by = new Array(s.lines.length).fill(-1);
+    for (let i = 1; i <= game.idx; i++) {
+      const m = game.moves[i];
+      if (typeof m === 'number') by[m] = game.history[i - 1].turn;
+    }
+    return by;
+  }
+
   function render(host, v) {
-    const s = v.state, g = E.geometry(s.R, s.C);
+    const s = v.state, g = E.geometry(s.R, s.C), game = v.game;
     GP.clear(host);
     const P = 0.5, W = g.C + 2 * P, H = g.R + 2 * P;
     const svg = h('svg:svg', { viewBox: `0 0 ${W} ${H}`, class: 'dots' });
     const legal = new Set(v.legal);
     const lastSet = new Set(s.lastLines || (s.last != null ? [s.last] : []));
+    const by = lineOwners(game, s);
+    const who = (p) => (p === v.me ? 'You' : game.mode === 'ai' ? 'Bot' : 'Them');
 
-    // boxes
+    // Boxes, in the color of whoever closed them
     s.owner.forEach((o, bi) => {
       if (o < 0) return;
       const r = Math.floor(bi / g.C), c = bi % g.C;
-      svg.appendChild(h('svg:rect', { x: P + c + 0.06, y: P + r + 0.06, width: 0.88, height: 0.88, rx: 0.12, class: 'dbox p' + o }));
-      svg.appendChild(h('svg:text', { x: P + c + 0.5, y: P + r + 0.62, class: 'dbox-t' }, o === v.me ? 'You' : 'Opp'));
+      svg.appendChild(h('svg:rect', { x: P + c + 0.05, y: P + r + 0.05, width: 0.9, height: 0.9, rx: 0.1, class: 'dbox p' + o }));
+      svg.appendChild(h('svg:text', { x: P + c + 0.5, y: P + r + 0.59, class: 'dbox-t p' + o }, who(o)));
     });
-    // lines
+    // Lines: empty ones faint, drawn ones in the color of who drew them
     for (let l = 0; l < g.L; l++) {
       const L = lineInfo(g, l);
       const x1 = P + L.c, y1 = P + L.r, x2 = x1 + (L.horiz ? 1 : 0), y2 = y1 + (L.horiz ? 0 : 1);
       const drawn = !!s.lines[l];
       const cls = ['dline'];
-      if (drawn) cls.push('on');
-      if (lastSet.has(l)) cls.push('last');
-      if (v.hint && v.hint.move === l) cls.push('hint');
+      if (drawn) cls.push('on', by[l] >= 0 ? 'p' + by[l] : 'p-edit');
+      if (drawn && lastSet.has(l)) cls.push('last');
+      const isHint = !drawn && v.hint && v.hint.move === l;
+      if (isHint) cls.push('hint', 'p' + s.turn);
       if (!drawn && legal.has(l) && v.canPlay) cls.push('playable', 's' + s.turn);
       svg.appendChild(h('svg:line', { x1, y1, x2, y2, class: cls.join(' ') }));
       // Tap target: the diamond around the line, so the whole board is
@@ -48,13 +61,13 @@
       if (v.editing || (!drawn && legal.has(l) && v.canPlay)) hit.addEventListener('click', () => (v.editing ? v.onEdit(l) : v.onMove(l)));
       svg.appendChild(hit);
     }
-    // dots
-    for (let r = 0; r <= g.R; r++) for (let c = 0; c <= g.C; c++) svg.appendChild(h('svg:circle', { cx: P + c, cy: P + r, r: 0.09, class: 'ddot' }));
+    // Dots on top
+    for (let r = 0; r <= g.R; r++) for (let c = 0; c <= g.C; c++) svg.appendChild(h('svg:circle', { cx: P + c, cy: P + r, r: 0.075, class: 'ddot' }));
 
     host.append(
       h('div', { class: 'oth-score' },
-        h('span', { class: 'chip' }, GP.pieceSwatch('dp0'), v.game.sideName(0) + ' ', h('b', null, s.score[0])),
-        h('span', { class: 'chip' }, GP.pieceSwatch('dp1'), v.game.sideName(1) + ' ', h('b', null, s.score[1]))),
+        h('span', { class: 'chip' }, GP.pieceSwatch('dp0'), who(0) + ' ', h('b', null, s.score[0])),
+        h('span', { class: 'chip' }, GP.pieceSwatch('dp1'), who(1) + ' ', h('b', null, s.score[1]))),
       h('div', { class: 'dots-wrap' }, svg));
   }
 

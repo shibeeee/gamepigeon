@@ -79,7 +79,7 @@
     fromState: makeCtx,
     toState: (ctx, move) => ({ R: ctx.g.R, C: ctx.g.C, lines: Array.from(ctx.lines), owner: Array.from(ctx.owner), score: ctx.score.slice(), turn: ctx.side, last: move }),
     side: (ctx) => ctx.side,
-    moves(ctx) {
+    moves(ctx, ply) {
       const g = ctx.g, take = [], safe = [], risky = [];
       for (let l = 0; l < g.L; l++) {
         if (ctx.lines[l]) continue;
@@ -87,8 +87,10 @@
         else if (!gives(ctx, l)) safe.push(l);
         else risky.push(l);
       }
-      if (risky.length) {
-        const cost = new Map(risky.map((l) => [l, chainAfter(ctx, l)]));
+      // Sacrifices: smallest chain first. Measuring chains is slow, so only
+      // near the top of the search; deeper down, fewest boxes given first.
+      if (risky.length > 1) {
+        const cost = new Map(risky.map((l) => [l, ply <= 1 ? chainAfter(ctx, l) : gives(ctx, l)]));
         risky.sort((a, b) => cost.get(a) - cost.get(b));
       }
       return take.concat(safe, risky);
