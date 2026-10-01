@@ -16,26 +16,34 @@
 
 
   function mount(root) {
-    const st = Object.assign({ layout: '4x4', letters: {}, used: [], view: 'list', maxLen: 12, autoTick: true },
-      GP.store.get('wordhunt', {}));
+    const st = Object.assign({ layout: '4x4', letters: {}, used: [], maxLen: 12, order: 'score' }, GP.store.get('wordhunt', {}));
     const save = () => GP.store.set('wordhunt', st);
     let results = [];
     let query = '';
-    let selected = null;
-    let focusIdx = 0;
-    const ticked = []; // words ticked off in one-at-a-time view, so Back can undo them
     let used = new Set(st.used);
-    let tiles;
+    let tiles, listEl = null;
 
     const boardHost = h('div', { class: 'wh-board' });
     const overlay = h('svg:svg', { class: 'wh-path', 'aria-hidden': 'true' });
+    const stage = h('div', { class: 'wh-stage' }, boardHost, overlay);
     const side = h('div', { class: 'wh-side' });
-    const focusHost = h('div', { class: 'focus-host' });
     const quickHost = h('div', { class: 'quick-host' });
+
+    const flow = GP.wordFlow({
+      list: () => ordered(),
+      keyOf: (x) => x.word,
+      used: () => used,
+      onUsed: () => { st.used = [...used]; save(); if (listEl) listEl.sync(); },
+      onShow: (x, quiet) => {
+        drawPath();
+        if (listEl) listEl.sync(x ? x.word : null);
+        if (!quiet) GP.showOnPhone(stage);
+      },
+      meta: (x) => GP.fmt(x.score) + ' points',
+    });
 
     const layoutSeg = GP.segmented(Object.keys(LAYOUTS).map((k) => ({ value: k, label: LAYOUTS[k].label })), st.layout, (v) => {
       st.layout = v;
-      selected = null;
       save();
       buildBoard();
       solve();
@@ -43,10 +51,10 @@
 
     root.appendChild(h('div', { class: 'game-layout word' },
       h('section', { class: 'play-area' },
-        h('div', { class: 'toolbar' }, layoutSeg, GP.roundTimer('wordhunt')),
-        h('div', { class: 'wh-stage' }, boardHost, overlay),
+        h('div', { class: 'toolbar' }, layoutSeg),
+        stage,
         quickHost,
-        focusHost,
+        flow.el,
         h('div', { class: 'btn-row' },
           GP.button('Screenshot', { icon: 'upload', title: 'Read the letters from a screenshot', onclick: () => {
             const L = LAYOUTS[st.layout];
@@ -89,7 +97,7 @@
       if (st.usedKey !== boardKey()) { used = new Set(); st.usedKey = boardKey(); st.used = []; save(); }
       if (!filled) {
         results = [];
-        selected = null;
+        flow.reset();
         renderSide(vals.filter(Boolean).length);
         drawPath();
         return;
@@ -98,10 +106,8 @@
       GP.loadWords().then(() => {
         const cells = vals.map((ch, i) => ((L.maskArr && !L.maskArr[i]) ? null : ch));
         results = GP.words.wordHunt(cells, L.cols, st.maxLen);
-        focusIdx = 0;
-        if (selected && !results.find((x) => x.word === selected.word)) selected = null;
         renderSide();
-        drawPath();
+        flow.reset();
       }, (e) => GP.toast(e.message, 'error'));
     }
 
@@ -109,47 +115,34 @@
       if (used.has(word)) used.delete(word); else used.add(word);
       st.used = [...used];
       save();
-      renderSide();
-    }
-
-    function select(item) {
-      selected = item;
-      GP.sound.play('pop');
-      drawPath();
-      renderFocus();
-      GP.showOnPhone(GP.$('.wh-stage', root));
+      if (listEl) listEl.sync();
+      flow.render();
     }
 
     function renderSide(filledCount) {
       GP.clear(side);
+      listEl = null;
       const L = LAYOUTS[st.layout];
       side.appendChild(h('div', { class: 'card' },
-        h('h3', null, 'View'),
-        GP.segmented([{ value: 'list', label: 'All words', icon: 'list' }, { value: 'focus', label: 'One at a time', icon: 'play' }], st.view, (v) => {
-          st.view = v; save(); renderSide(); renderFocus();
-        }),
+        h('div', { class: 'field' }, h('label', null, 'Order'),
+          GP.segmented([{ value: 'score', label: 'Most points' }, { value: 'route', label: 'Smooth route' }], st.order, (v) => { st.order = v; save(); flow.reset(); })),
         h('div', { class: 'field' }, h('label', null, 'Longest word'),
-          GP.segmented([6, 8, 10, 12].map((n) => ({ value: n, label: n === 12 ? 'Any' : String(n) })), st.maxLen, (v) => { st.maxLen = v; save(); solve(); })),
-        h('div', { class: 'field' }, h('label', null, 'Order in one-at-a-time view'),
-          GP.segmented([{ value: 'score', label: 'Most points first' }, { value: 'route', label: 'Smooth route' }], st.order || 'score', (v) => { st.order = v; save(); renderFocus(); })),
-        GP.toggle('Cross off words as I go', st.autoTick, (v) => { st.autoTick = v; save(); }, 'In one-at-a-time view')));
+          GP.segmented([6, 8, 10, 12].map((n) => ({ value: n, label: n === 12 ? 'Any' : String(n) })), st.maxLen, (v) => { st.maxLen = v; save(); solve(); }))));
 
       if (filledCount != null) {
         const total = L.maskArr ? L.maskArr.filter(Boolean).length : L.count;
         side.appendChild(h('div', { class: 'card empty-card' },
           h('p', null, filledCount ? `${filledCount} of ${total} letters in.` : 'Type the letters from your board, or use a screenshot. Words show up once every tile is filled.')));
-        renderFocus();
         return;
       }
-      if (st.view === 'list') {
-        side.appendChild(h('div', { class: 'card grow' }, GP.wordResults({
-          items: results, used, selected: selected && selected.word,
-          onSelect: select, onToggleUsed: toggleUsed,
-          query, onQuery: (q) => (query = q),
-          emptyText: 'No words found on this board.',
-        })));
-      }
-      renderFocus();
+      const cur = flow.current();
+      listEl = GP.wordResults({
+        items: results, used, selected: cur && cur.word,
+        onSelect: (x) => flow.select(x), onToggleUsed: toggleUsed,
+        query, onQuery: (q) => (query = q),
+        emptyText: 'No words found on this board.',
+      });
+      side.appendChild(h('div', { class: 'card grow' }, listEl));
     }
 
     /*
@@ -158,7 +151,7 @@
      */
     let routeCache = null;
     function ordered() {
-      if ((st.order || 'score') !== 'route') return results;
+      if (st.order !== 'route') return results;
       if (routeCache && routeCache.src === results) return routeCache.list;
       const L = LAYOUTS[st.layout];
       const pos = (i) => [Math.floor(i / L.cols), i % L.cols];
@@ -181,58 +174,13 @@
       return list;
     }
 
-    function renderFocus() {
-      GP.clear(focusHost);
-      if (st.view === 'list' && selected && results.includes(selected)) {
-        const w = selected.word;
-        focusHost.appendChild(h('div', { class: 'card focus-card compact' },
-          h('div', { class: 'focus-word' }, w.toUpperCase()),
-          h('div', { class: 'focus-meta' }, GP.fmt(selected.score) + ' points · start on the green tile'),
-          h('div', { class: 'btn-row' }, GP.button(used.has(w) ? 'Undo cross-off' : 'Cross off', { icon: 'check', kind: 'primary', onclick: () => toggleUsed(w) }))));
-        return;
-      }
-      if (st.view !== 'focus' || !results.length) return;
-      const queue = ordered().filter((x) => !used.has(x.word) || x === selected);
-      if (!queue.length) {
-        focusHost.appendChild(h('div', { class: 'card focus-card' }, h('p', null, 'That\'s every word.'),
-          GP.button('Start over', { icon: 'refresh', onclick: () => { used.clear(); st.used = []; save(); renderSide(); } })));
-        return;
-      }
-      focusIdx = Math.max(0, Math.min(focusIdx, queue.length - 1));
-      const item = queue[focusIdx];
-      if (!selected || selected.word !== item.word) { selected = item; drawPath(); }
-      const go = (d) => {
-        if (d > 0 && st.autoTick) {
-          used.add(item.word);
-          ticked.push(item.word);
-        } else if (d < 0 && st.autoTick && ticked.length) {
-          const w = ticked.pop();
-          used.delete(w);
-          focusIdx = results.filter((x) => !used.has(x.word)).findIndex((x) => x.word === w);
-        } else focusIdx += d;
-        st.used = [...used];
-        save();
-        selected = null;
-        renderSide();
-      };
-      const canGoBack = st.autoTick ? ticked.length > 0 : focusIdx > 0;
-      const card = h('div', { class: 'card focus-card' },
-        h('div', { class: 'focus-word' }, item.word.toUpperCase()),
-        h('div', { class: 'focus-meta' }, GP.fmt(item.score) + ' points · ' + (queue.indexOf(item) + 1) + ' of ' + queue.length + ' left'),
-        h('div', { class: 'btn-row' },
-          GP.button('Back', { icon: 'prev', onclick: () => go(-1), disabled: !canGoBack }),
-          GP.button(st.autoTick ? 'Got it, next' : 'Next', { icon: 'next', kind: 'primary', onclick: () => go(1) })),
-        h('small', { class: 'swipe-tip' }, 'Swipe left for the next word'));
-      GP.onSwipe(card, () => go(1), () => { if (canGoBack) go(-1); });
-      focusHost.appendChild(card);
-    }
-
     function drawPath() {
       GP.clear(overlay);
       if (!tiles) return;
       tiles.inputs.forEach((inp) => { if (inp) { inp.parentElement.classList.remove('on-path', 'start'); inp.parentElement.removeAttribute('data-step'); } });
-      if (!selected) return;
-      const stage = overlay.parentElement.getBoundingClientRect();
+      const selected = flow.current();
+      if (!selected || !results.includes(selected)) return;
+      const box = stage.getBoundingClientRect();
       let size = 0;
       const pts = selected.path.map((i, k) => {
         const inp = tiles.inputs[i], wrap = inp.parentElement;
@@ -241,9 +189,9 @@
         wrap.dataset.step = k + 1;
         const r = inp.getBoundingClientRect();
         size = r.width;
-        return [r.left - stage.left + r.width / 2, r.top - stage.top + r.height / 2];
+        return [r.left - box.left + r.width / 2, r.top - box.top + r.height / 2];
       });
-      overlay.setAttribute('viewBox', `0 0 ${stage.width} ${stage.height}`);
+      overlay.setAttribute('viewBox', `0 0 ${box.width} ${box.height}`);
       // One short arrow between each pair of tiles, stopping short of the
       // letters so they stay readable.
       const trim = size * 0.34, f = (n) => n.toFixed(1);
@@ -254,17 +202,15 @@
         const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len;
         overlay.appendChild(h('svg:path', {
           d: 'M' + f(x1 + ux * trim) + ' ' + f(y1 + uy * trim) + ' L' + f(x2 - ux * trim) + ' ' + f(y2 - uy * trim),
-          class: 'wh-line', 'marker-end': 'url(#wh-arrow)', style: { animationDelay: (k - 1) * 60 + 'ms' },
+          class: 'wh-line', 'marker-end': 'url(#wh-arrow)', style: { animationDelay: (k - 1) * 40 + 'ms' },
         }));
       }
     }
-
 
     function clearBoard() {
       const before = (st.letters[st.layout] || []).slice();
       if (before.some(Boolean)) GP.toast('Board cleared', null, { label: 'Undo', onclick: () => { st.letters[st.layout] = before; save(); buildBoard(); solve(); } });
       st.letters[st.layout] = [];
-      selected = null;
       save();
       buildBoard();
       solve();
@@ -273,21 +219,13 @@
 
     const onResize = GP.debounce(drawPath, 100);
     window.addEventListener('resize', onResize);
-    const onKey = (e) => {
-      if (st.view !== 'focus' || e.target.closest('input')) return;
-      const btn = (sel) => GP.$('.focus-card ' + sel, root);
-      if (e.key === 'ArrowRight' || e.key === ' ' || e.key === 'Enter') {
-        e.preventDefault();
-        if (btn('.btn-primary')) btn('.btn-primary').click();
-      } else if (e.key === 'ArrowLeft' && btn('.btn:not(.btn-primary)')) btn('.btn:not(.btn-primary)').click();
-    };
-    document.addEventListener('keydown', onKey);
+    document.addEventListener('keydown', flow.onKey);
 
     buildBoard();
     solve();
     if (!letters().some(Boolean)) setTimeout(() => tiles.focusFirstEmpty(), 60);
 
-    return { destroy() { window.removeEventListener('resize', onResize); document.removeEventListener('keydown', onKey); } };
+    return { destroy() { window.removeEventListener('resize', onResize); document.removeEventListener('keydown', flow.onKey); } };
   }
 
   GP.registerGame({
@@ -298,9 +236,9 @@
     color: '#e0a100',
     help: `<p>Connect touching letters (diagonals count) to make words. Each tile once per word. Longer words score a lot more.</p>
       <ul><li>Type the letters, or tap <b>Screenshot</b> and pick a screenshot of your board.</li>
-      <li>Tap a word to see how to swipe it: start on the green tile and follow the numbers.</li>
-      <li><b>One at a time</b> shows the best words in order. Swipe or press Space for the next one.</li>
-      <li>Double-tap a word to cross it off.</li></ul>`,
+      <li>The best word shows under the board: start on the green tile and follow the arrows.</li>
+      <li>Swiped it in GamePigeon? Tap <b>Done</b> and the next word shows up. <b>Skip</b> moves on without crossing it off.</li>
+      <li>Tap any word in the list to show it instead.</li></ul>`,
     mount,
   });
 })();

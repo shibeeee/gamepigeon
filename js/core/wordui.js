@@ -129,45 +129,99 @@
   GP.loadingCard = () => h('div', { class: 'card empty-card' }, h('div', { class: 'spinner' }), h('p', null, 'Loading the dictionary…'));
 
   /*
-   * A small round timer (GamePigeon word rounds are 80 seconds). It keeps
-   * running while the page redraws, and beeps near the end.
+   * One word at a time: Done crosses the word off and shows the next one
+   * straight away, Skip moves on without crossing off, Back undoes Done.
+   *   list()      words in the order to play them
+   *   keyOf(x)    id used in the `used` set
+   *   used()      the live Set of crossed-off ids
+   *   onUsed()    called after the set changes (save it, sync the list)
+   *   onShow(x)   called when a new word comes up (draw its path)
+   *   meta(x)     the small line under the word
+   *   extra(x)    optional element under that (a diagram)
    */
-  const timers = {};
-  GP.roundTimer = function (id) {
-    const t = (timers[id] = timers[id] || { end: 0, iv: null, el: null });
-    const len = () => GP.store.get('roundLen', 80);
-    const el = h('button', { type: 'button', class: 'round-timer', title: 'Round timer: tap to start or stop. Long rounds? Change the length in Settings.' });
-    t.el = el;
-    let lastSec = null;
-    function draw() {
-      const left = t.end ? Math.max(0, Math.ceil((t.end - Date.now()) / 1000)) : 0;
-      GP.clear(t.el);
-      t.el.classList.toggle('running', !!t.end);
-      t.el.classList.toggle('low', !!t.end && left <= 10);
-      t.el.style.setProperty('--p', t.end ? left / len() : 1);
-      t.el.append(GP.icon('play'), h('span', null, t.end ? left + 's' : len() + 's round'));
-      if (t.end && left !== lastSec) {
-        if (left <= 3 && left > 0) GP.sound.play('tick');
-        lastSec = left;
+  GP.wordFlow = function (o) {
+    const host = h('div', { class: 'focus-host' });
+    let current = null;
+    const history = [];
+    const key = (x) => o.keyOf(x);
+    const left = () => o.list().filter((x) => !o.used().has(key(x)));
+    const flow = { el: host };
+
+    function nextAfter(item) {
+      const list = o.list(), used = o.used();
+      const at = Math.max(0, list.indexOf(item));
+      for (let k = 1; k <= list.length; k++) {
+        const x = list[(at + k) % list.length];
+        if (!used.has(key(x))) return x;
       }
-      if (t.end && left === 0) {
-        stop();
-        GP.sound.play('buzzer');
-        GP.buzz(300);
-        GP.toast("Time's up!", 'warn');
-      }
+      return null;
     }
-    function stop() { clearInterval(t.iv); t.iv = null; t.end = 0; draw(); }
-    el.addEventListener('click', () => {
-      if (t.end) { stop(); return; }
-      t.end = Date.now() + len() * 1000;
-      GP.sound.play('pop');
-      clearInterval(t.iv);
-      t.iv = setInterval(() => (document.contains(t.el) ? draw() : null), 250);
-      draw();
-    });
-    draw();
-    return el;
+    function set(item, quiet) {
+      current = item;
+      flow.render();
+      if (o.onShow) o.onShow(item, quiet);
+    }
+    flow.current = () => current;
+    flow.select = (item) => set(item);
+    /* New results: start from the best word that isn't crossed off. */
+    flow.reset = () => { history.length = 0; set(left()[0] || null, true); };
+    flow.done = () => {
+      if (!current) return;
+      const used = o.used();
+      if (used.has(key(current))) { used.delete(key(current)); o.onUsed(); flow.render(); return; }
+      used.add(key(current));
+      history.push(current);
+      GP.sound.play('click');
+      const next = nextAfter(current);
+      o.onUsed();
+      set(next);
+    };
+    flow.skip = () => { if (current) set(nextAfter(current) || current); };
+    flow.back = () => {
+      const prev = history.pop();
+      if (!prev) return;
+      o.used().delete(key(prev));
+      o.onUsed();
+      set(prev);
+    };
+    flow.render = () => {
+      GP.clear(host);
+      const all = o.list();
+      if (!all.length) return;
+      const remaining = left().length;
+      if (!current || !all.includes(current)) {
+        if (remaining) { current = left()[0]; if (o.onShow) o.onShow(current, true); }
+        else {
+          host.appendChild(h('div', { class: 'card focus-card' }, h('div', { class: 'focus-word' }, 'All done'),
+            h('div', { class: 'focus-meta' }, 'You\'ve crossed off every word.'),
+            h('div', { class: 'btn-row' },
+              history.length ? GP.button('Back', { icon: 'prev', onclick: flow.back }) : null,
+              GP.button('Start over', { icon: 'refresh', kind: 'primary', onclick: () => { o.used().clear(); o.onUsed(); flow.reset(); } }))));
+          return;
+        }
+      }
+      const isUsed = o.used().has(key(current));
+      const card = h('div', { class: 'card focus-card' },
+        h('div', { class: 'focus-word' + (isUsed ? ' used' : '') }, current.word.toUpperCase()),
+        h('div', { class: 'focus-meta' }, [o.meta ? o.meta(current) : null, remaining + ' left'].filter(Boolean).join(' · ')),
+        o.extra ? o.extra(current) : null,
+        h('div', { class: 'btn-row flow-btns' },
+          GP.button('Back', { icon: 'prev', onclick: flow.back, disabled: !history.length, title: 'Bring back the last word (Left arrow)' }),
+          GP.button('Skip', { icon: 'next', kind: 'ghost', onclick: flow.skip, disabled: remaining < 2 && !isUsed, title: 'Next word without crossing this one off (Right arrow)' }),
+          GP.button(isUsed ? 'Not done' : 'Done', { icon: isUsed ? 'undo' : 'check', kind: 'primary', onclick: flow.done, title: 'Cross it off and show the next word (Enter)' })));
+      GP.onSwipe(card, flow.done, flow.back);
+      host.appendChild(card);
+    };
+    flow.onKey = (e) => {
+      // Keys work anywhere except in text boxes and on other buttons (a word
+      // in the list is fine: Enter right after tapping it means Done).
+      const t = e.target;
+      if (!current || t.closest('input, textarea, select') || (t.closest('button') && !t.closest('.word-chip')) || document.querySelector('.modal-back')) return;
+      if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flow.done(); }
+      else if (e.key === 'ArrowRight') flow.skip();
+      else if (e.key === 'ArrowLeft') flow.back();
+    };
+    return flow;
   };
 
   /*
@@ -180,11 +234,13 @@
     const el = h('div', { class: 'results' });
     const words = new Set(items.map((x) => x.word));
     const total = items.reduce((a, x) => a + x.score, 0);
-    const remaining = items.filter((x) => !used.has(x.key || x.word)).reduce((a, x) => a + x.score, 0);
+    const leftEl = h('b');
     el.appendChild(h('div', { class: 'results-summary' },
       h('div', null, h('b', null, GP.fmt(items.length)), h('small', null, items.length === 1 ? 'word' : 'words')),
       h('div', null, h('b', null, GP.fmt(total)), h('small', null, 'points possible')),
-      h('div', null, h('b', null, GP.fmt(used.size ? remaining : total)), h('small', null, 'points left'))));
+      h('div', null, leftEl, h('small', null, 'points left'))));
+    const countLeft = () => { leftEl.textContent = GP.fmt(items.filter((x) => !used.has(x.key || x.word)).reduce((a, x) => a + x.score, 0)); };
+    countLeft();
 
     // Search box: filters the list and checks any word against the dictionary.
     const search = h('input', { class: 'text-input filter', type: 'search', placeholder: 'Find or check a word', value: opts.query || '', autocapitalize: 'off', spellcheck: 'false', 'aria-label': 'Find or check a word' });
@@ -226,9 +282,9 @@
             type: 'button',
             class: 'word-chip' + (used.has(key) ? ' used' : '') + (selected === key ? ' on' : ''),
             title: 'Tap to show, double-tap to tick off',
-            onclick: () => { selected = key; GP.$$('.word-chip.on', el).forEach((c) => c.classList.remove('on')); chip.classList.add('on'); onSelect(x); },
+            onclick: () => { selected = key; onSelect(x); el.sync(key); },
             ondblclick: () => onToggleUsed(key),
-            dataset: { w: x.word },
+            dataset: { w: x.word, k: key },
           }, x.word.toUpperCase(), opts.badge ? opts.badge(x) : null);
           return chip;
         }))));
@@ -236,6 +292,15 @@
     if (!items.length) list.appendChild(h('p', { class: 'empty' }, opts.emptyText || 'No words yet.'));
     el.appendChild(list);
     if (search.value) applyFilter();
+    /* Updates crossed-off words and the shown word without redrawing (keeps the scroll). */
+    el.sync = (sel) => {
+      if (sel !== undefined) selected = sel;
+      GP.$$('.word-chip', el).forEach((c) => {
+        c.classList.toggle('used', used.has(c.dataset.k));
+        c.classList.toggle('on', c.dataset.k === selected);
+      });
+      countLeft();
+    };
     return el;
   };
 })();

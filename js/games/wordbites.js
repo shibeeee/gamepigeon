@@ -49,10 +49,23 @@
     let used = new Set(st.used);
     let results = [];
     let query = '';
-    let current = null; // word shown in the diagram card
+    let listEl = null;
     const side = h('div', { class: 'wh-side' });
     const piecesPreview = h('div', { class: 'wb-pieces' });
-    const show = h('div', { class: 'wb-show' });
+    const shown = () => results.filter((x) => st.dir === 'all' || x.dir === st.dir);
+    const flow = GP.wordFlow({
+      list: shown,
+      keyOf: (x) => x.key,
+      used: () => used,
+      onUsed: () => { st.used = [...used]; save(); if (listEl) listEl.sync(); },
+      onShow: (x, quiet) => {
+        if (listEl) listEl.sync(x ? x.key : null);
+        if (!quiet) setTimeout(() => GP.showOnPhone(flow.el), 30);
+      },
+      meta: (x) => (x.dir === 'H' ? 'Across' : 'Down') + ' · ' + GP.fmt(x.score) + ' points',
+      extra: (x) => diagram(x),
+    });
+    const show = flow.el;
 
     const field = (key, label, placeholder, help) => {
       const input = h('input', { class: 'text-input mono', value: st[key], placeholder, autocapitalize: 'characters', spellcheck: 'false' });
@@ -69,7 +82,6 @@
 
     root.appendChild(h('div', { class: 'game-layout word' },
       h('section', { class: 'play-area' },
-        h('div', { class: 'toolbar' }, GP.roundTimer('wordbites')),
         h('div', { class: 'card wb-card' },
           h('h3', null, 'Your pieces'),
           field('singles', 'Single letters', 'A E R T', 'One tile each'),
@@ -103,14 +115,13 @@
       p.vt.forEach((x) => piecesPreview.appendChild(pieceEl(x, 'v')));
       const key = [p.s.slice().sort().join(''), p.hz.slice().sort().join(','), p.vt.slice().sort().join(',')].join('|');
       if (key !== st.usedKey) { st.usedKey = key; used = new Set(); st.used = []; save(); }
-      GP.clear(show);
       const letterCount = p.s.length + p.hz.length * 2 + p.vt.length * 2;
-      if (letterCount < 3) { results = []; render(true); return; }
-      current = null;
+      if (letterCount < 3) { results = []; flow.reset(); render(true); return; }
       if (!GP.words.ready()) { GP.clear(side); side.appendChild(GP.loadingCard()); }
       GP.loadWords().then(() => {
         results = GP.words.wordBites(p.s, p.hz, p.vt).map((x) => Object.assign(x, { key: x.word + ':' + x.dir }));
         render();
+        flow.reset();
       }, (e) => GP.toast(e.message, 'error'));
     }
 
@@ -118,40 +129,32 @@
       if (used.has(key)) used.delete(key); else used.add(key);
       st.used = [...used];
       save();
-      render();
-      if (current) select(current, true);
-    }
-
-    function select(item, quiet) {
-      current = item;
-      if (!quiet) { GP.sound.play('pop'); setTimeout(() => GP.showOnPhone(show), 30); }
-      GP.clear(show);
-      show.appendChild(h('div', { class: 'card focus-card' },
-        h('div', { class: 'focus-word' }, item.word.toUpperCase()),
-        h('div', { class: 'focus-meta' }, (item.dir === 'H' ? 'Across' : 'Down') + ' · ' + GP.fmt(item.score) + ' points'),
-        diagram(item),
-        h('div', { class: 'btn-row' }, GP.button(used.has(item.key) ? 'Undo cross-off' : 'Cross off', { icon: 'check', kind: 'primary', onclick: () => toggle(item.key) }))));
+      if (listEl) listEl.sync();
+      flow.render();
     }
 
     function render(empty) {
       GP.clear(side);
+      listEl = null;
       if (empty) {
         side.appendChild(h('div', { class: 'card empty-card' },           h('p', null, 'Type the pieces from your board. Put a space between pairs, like "TH ER".')));
         return;
       }
-      const shown = results.filter((x) => st.dir === 'all' || x.dir === st.dir);
-      side.appendChild(h('div', { class: 'card' }, h('h3', null, 'Direction'),
-        GP.segmented([{ value: 'all', label: 'Both' }, { value: 'H', label: 'Across' }, { value: 'V', label: 'Down' }], st.dir, (v) => { st.dir = v; save(); render(); })));
-      side.appendChild(h('div', { class: 'card grow' }, GP.wordResults({
-        items: shown, used, onSelect: select, onToggleUsed: toggle,
-        query, onQuery: (q) => (query = q), selected: current && current.key,
+      side.appendChild(h('div', { class: 'card' }, h('div', { class: 'field' }, h('label', null, 'Direction'),
+        GP.segmented([{ value: 'all', label: 'Both' }, { value: 'H', label: 'Across' }, { value: 'V', label: 'Down' }], st.dir, (v) => { st.dir = v; save(); render(); flow.reset(); }))));
+      const cur = flow.current();
+      listEl = GP.wordResults({
+        items: shown(), used, onSelect: (x) => flow.select(x), onToggleUsed: toggle,
+        query, onQuery: (q) => (query = q), selected: cur && cur.key,
         badge: (x) => h('em', { class: 'dir ' + x.dir }, x.dir === 'H' ? '→' : '↓'),
         emptyText: 'No words found with these pieces.',
-      })));
+      });
+      side.appendChild(h('div', { class: 'card grow' }, listEl));
     }
 
+    document.addEventListener('keydown', flow.onKey);
     solve();
-    return { destroy() {} };
+    return { destroy() { document.removeEventListener('keydown', flow.onKey); } };
   }
 
   GP.registerGame({
@@ -162,7 +165,8 @@
     color: '#ff8a1f',
     help: `<p>Pieces have one or two letters. Two-letter pieces sit side by side or stacked. Slide them together to make words.</p>
       <ul><li>Type your single letters, side-by-side pairs and stacked pairs. Put a space between pairs.</li>
-      <li>Tap a word to see how to line up the pieces. A faded letter sticks out of the word.</li>
+      <li>The best word shows with how to line up the pieces. A faded letter sticks out of the word.</li>
+      <li>Made it in GamePigeon? Tap <b>Done</b> and the next word shows up.</li>
       <li>Words going across can be up to 8 letters, going down up to 9.</li></ul>`,
     mount,
   });

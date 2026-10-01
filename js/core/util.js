@@ -68,20 +68,23 @@
   };
   GP.onSetting = (fn) => settingListeners.push(fn);
   GP.ACCENTS = {
-    violet: '#7c5cff', blue: '#2f7bff', teal: '#12b3a6', green: '#2fb45a',
-    orange: '#ff8a1f', pink: '#ff4f93', red: '#f0463c',
+    blue: '#0a7cff', violet: '#6e56cf', teal: '#0d9488', green: '#1f9d55',
+    orange: '#ea6c0a', pink: '#e5487f', red: '#e5484d',
   };
   GP.applySettings = function () {
     const d = document.documentElement;
     d.dataset.theme = GP.settings.theme === 'system' ? '' : GP.settings.theme;
     if (!d.dataset.theme) delete d.dataset.theme;
-    d.style.setProperty('--accent', GP.ACCENTS[GP.settings.accent] || GP.ACCENTS.violet);
+    d.style.setProperty('--accent', GP.ACCENTS[GP.settings.accent] || GP.ACCENTS.blue);
     d.classList.toggle('no-anim', !GP.settings.animations);
     d.classList.toggle('colorblind', !!GP.settings.colorblind);
     d.classList.toggle('no-coords', !GP.settings.coords);
     d.classList.toggle('text-large', GP.settings.textSize === 'large');
     d.classList.toggle('text-xl', GP.settings.textSize === 'xl');
     d.classList.toggle('contrast', !!GP.settings.contrast);
+    // The browser bar matches the page background.
+    const meta = document.querySelector('meta[name="theme-color"]');
+    if (meta) meta.content = getComputedStyle(d).getPropertyValue('--bg').trim() || '#f6f6f7';
   };
 
   /* ---------- DOM ---------- */

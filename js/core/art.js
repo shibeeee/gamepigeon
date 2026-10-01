@@ -1,151 +1,173 @@
-/* Hand-drawn SVG illustrations for the game cards (viewBox 160 x 100). */
+/*
+ * Flat SVG illustrations for the game cards (viewBox 160 x 100): simple
+ * shapes, flat colors, no shine. Each one is a tiny version of the board.
+ */
 (function () {
   'use strict';
   const GP = window.GP;
+  const FONT = '-apple-system,BlinkMacSystemFont,Segoe UI,Roboto,system-ui,sans-serif';
 
+  // A letter tile.
   function tile(x, y, s, letter, fill, color) {
-    return `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${s * 0.2}" fill="${fill || '#fff6dd'}" stroke="rgba(0,0,0,.12)"/>` +
-      `<text x="${x + s / 2}" y="${y + s * 0.7}" text-anchor="middle" font-size="${s * 0.58}" font-weight="800" fill="${color || '#4a3a14'}" font-family="ui-rounded,system-ui,sans-serif">${letter}</text>`;
+    return `<rect x="${x}" y="${y + 1.2}" width="${s}" height="${s}" rx="${s * 0.22}" fill="rgba(0,0,0,.14)"/>` +
+      `<rect x="${x}" y="${y}" width="${s}" height="${s}" rx="${s * 0.22}" fill="${fill || '#f7ecd2'}"/>` +
+      `<text x="${x + s / 2}" y="${y + s * 0.69}" text-anchor="middle" font-size="${s * 0.52}" font-weight="700" fill="${color || '#3b3018'}" font-family="${FONT}">${letter}</text>`;
+  }
+  // A flat chess pawn, drawn so it looks the same everywhere. (cx, y) is
+  // the middle and top of its 18-unit square.
+  function pawn(cx, y, white) {
+    const base = y + 15.5;
+    return `<g fill="${white ? '#ffffff' : '#1d1d20'}" stroke="#1d1d20" stroke-width="1.1" stroke-linejoin="round">` +
+      `<circle cx="${cx}" cy="${base - 10.6}" r="2.9"/>` +
+      `<path d="M${cx - 2.6} ${base - 7.4}h5.2l1.9 5.2h-9z"/>` +
+      `<rect x="${cx - 5.4}" y="${base - 2.4}" width="10.8" height="2.6" rx="1"/></g>`;
+  }
+  function crown(cx, cy, color) {
+    return `<path d="M${cx - 4.5} ${cy + 2.5}l-1-6 3.2 2.6 2.3-3.6 2.3 3.6 3.2-2.6-1 6z" fill="${color}"/>`;
   }
 
   const ART = {
     connect4() {
-      let s = '<rect x="30" y="18" width="100" height="74" rx="10" fill="#2463eb"/><rect x="30" y="18" width="100" height="10" rx="5" fill="#3b7bff" opacity=".6"/>';
-      const grid = ['....y..', '...ry..', '..rry..', '.yrryr.'];
+      let s = '<rect x="38" y="14" width="84" height="72" rx="12" fill="#2563eb"/>';
+      const grid = ['......', '...y..', '..ry..', '.rryy.', 'yrrry.'];
       grid.forEach((row, r) => row.split('').forEach((ch, c) => {
-        const x = 40 + c * 13.4, y = 36 + r * 15;
-        const fill = ch === 'r' ? '#f0463c' : ch === 'y' ? '#ffc21a' : '#123a91';
-        s += `<circle cx="${x}" cy="${y}" r="5.6" fill="${fill}"/>`;
-        if (ch !== '.') s += `<circle cx="${x - 1.5}" cy="${y - 1.8}" r="1.8" fill="#fff" opacity=".35"/>`;
+        const fill = ch === 'r' ? '#ef4444' : ch === 'y' ? '#fbbf24' : '#1b45b4';
+        s += `<circle cx="${51.5 + c * 11.4}" cy="${26 + r * 12}" r="4.4" fill="${fill}"/>`;
       }));
-      s += '<circle cx="80.2" cy="8" r="5.6" fill="#f0463c"/><path d="M80 15v4" stroke="#fff" stroke-width="1.6" stroke-linecap="round" opacity=".7"/>';
       return s;
     },
     othello() {
-      let s = '<rect x="40" y="10" width="80" height="80" rx="8" fill="#1f9d55"/>';
-      for (let k = 1; k < 5; k++) s += `<path d="M${40 + k * 16} 10v80M40 ${10 + k * 16}h80" stroke="#157a41" stroke-width="1"/>`;
-      const d = ['.....', '.bw..', '.wbw.', '..bb.', '.....'];
+      let s = '<rect x="44" y="14" width="72" height="72" rx="10" fill="#1e8c4e"/>';
+      for (let k = 1; k < 4; k++) s += `<path d="M${44 + k * 18} 14v72M44 ${14 + k * 18}h72" stroke="#12693a" stroke-width="1.2"/>`;
+      const d = ['....', '.bw.', '.wb.', '..w.'];
       d.forEach((row, r) => row.split('').forEach((ch, c) => {
         if (ch === '.') return;
-        s += `<circle cx="${48 + c * 16}" cy="${18 + r * 16}" r="6.2" fill="${ch === 'b' ? '#16161a' : '#f5f5f5'}" stroke="rgba(0,0,0,.25)"/>`;
+        s += `<circle cx="${53 + c * 18}" cy="${23 + r * 18}" r="6.4" fill="${ch === 'b' ? '#18181b' : '#f5f5f4'}"/>`;
       }));
-      s += '<circle cx="96" cy="34" r="2.2" fill="#fff" opacity=".6"/><circle cx="64" cy="82" r="2.2" fill="#fff" opacity=".6"/>';
       return s;
     },
     gomoku() {
-      let s = '<rect x="35" y="5" width="90" height="90" rx="8" fill="#e5b56e"/>';
-      for (let k = 0; k < 8; k++) s += `<path d="M${45 + k * 10} 15v70M45 ${15 + k * 10}h70" stroke="#9c6b2e" stroke-width=".8"/>`;
-      const stones = [[2, 2, 1], [3, 3, 1], [4, 4, 1], [5, 5, 1], [6, 6, 1], [3, 2, 0], [4, 3, 0], [2, 5, 0], [5, 3, 0], [6, 4, 0]];
-      stones.forEach(([r, c, p]) => {
-        s += `<circle cx="${45 + c * 10}" cy="${15 + r * 10}" r="4.3" fill="${p ? '#141416' : '#fafafa'}" stroke="rgba(0,0,0,.25)" stroke-width=".6"/>`;
-      });
-      s += '<path d="M63 33L107 77" stroke="#ff4f93" stroke-width="2.5" stroke-linecap="round" opacity=".85"/>';
+      let s = '<rect x="44" y="14" width="72" height="72" rx="10" fill="#e9c48c"/>';
+      for (let k = 0; k < 6; k++) s += `<path d="M${54 + k * 10.4} 24v52M54 ${24 + k * 10.4}h52" stroke="#a77c43" stroke-width=".9"/>`;
+      const at = (i) => 54 + i * 10.4;
+      [[1, 1], [2, 2], [3, 3], [4, 4]].forEach(([r, c]) => { s += `<circle cx="${at(c)}" cy="${at(r) - 30}" r="4.3" fill="#18181b"/>`; });
+      [[1, 3], [2, 4], [3, 1], [4, 2]].forEach(([r, c]) => { s += `<circle cx="${at(c)}" cy="${at(r) - 30}" r="4.3" fill="#fafaf9"/>`; });
       return s;
     },
     tictactoe() {
-      let s = '<path d="M68 18v64M92 18v64M48 38h64M48 62h64" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" opacity=".35"/>';
-      const X = (x, y) => `<path d="M${x - 7} ${y - 7}l14 14M${x + 7} ${y - 7}l-14 14" stroke="#ff4f93" stroke-width="4.5" stroke-linecap="round"/>`;
-      const O = (x, y) => `<circle cx="${x}" cy="${y}" r="7.5" fill="none" stroke="#2f7bff" stroke-width="4.5"/>`;
-      s += X(56, 27) + O(80, 27) + X(80, 50) + O(104, 50) + X(104, 73) + O(56, 73);
-      s += '<path d="M50 21L110 79" stroke="#ffc21a" stroke-width="3" stroke-linecap="round" opacity=".9"/>';
+      let s = '<path d="M70 22v56M90 22v56M52 40h56M52 60h56" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" opacity=".18"/>';
+      const X = (x, y) => `<path d="M${x - 6} ${y - 6}l12 12M${x + 6} ${y - 6}l-12 12" stroke="#f43f7a" stroke-width="4" stroke-linecap="round"/>`;
+      const O = (x, y) => `<circle cx="${x}" cy="${y}" r="6.5" fill="none" stroke="#2563eb" stroke-width="4"/>`;
+      s += X(60, 31) + O(80, 31) + O(100, 31) + X(80, 50) + X(100, 69) + O(60, 69);
       return s;
     },
-    mancala(tint) {
-      let s = `<rect x="12" y="22" width="136" height="56" rx="28" fill="${tint}"/><rect x="12" y="22" width="136" height="56" rx="28" fill="url(#wood)" opacity=".25"/>`;
-      s += '<rect x="20" y="30" width="18" height="40" rx="9" fill="rgba(0,0,0,.25)"/><rect x="122" y="30" width="18" height="40" rx="9" fill="rgba(0,0,0,.25)"/>';
-      const hues = ['#ff6b6b', '#4dabf7', '#51cf66', '#fcc419', '#cc5de8'];
+    mancala(board, pit) {
+      let s = `<rect x="18" y="28" width="124" height="44" rx="22" fill="${board}"/>`;
+      s += `<rect x="25" y="35" width="15" height="30" rx="7.5" fill="${pit}"/><rect x="120" y="35" width="15" height="30" rx="7.5" fill="${pit}"/>`;
+      const hues = ['#f87171', '#60a5fa', '#4ade80', '#facc15', '#c084fc'];
       for (let k = 0; k < 6; k++) {
-        for (const y of [38, 62]) {
-          const x = 48 + k * 13;
-          s += `<circle cx="${x}" cy="${y}" r="5.8" fill="rgba(0,0,0,.25)"/>`;
-          const n = (k * 7 + y) % 3 + 1;
-          for (let p = 0; p < n; p++) s += `<circle cx="${x - 2 + p * 2}" cy="${y - 1 + (p % 2) * 2}" r="1.5" fill="${hues[(k + p + y) % 5]}"/>`;
+        for (const y of [42, 58]) {
+          const x = 52 + k * 11.2;
+          s += `<circle cx="${x}" cy="${y}" r="4.6" fill="${pit}"/>`;
+          const n = (k + y) % 3 + 1;
+          for (let p = 0; p < n; p++) s += `<circle cx="${x - 1.6 + p * 1.6}" cy="${y - 0.8 + (p % 2) * 1.6}" r="1.5" fill="${hues[(k + p + y) % 5]}"/>`;
         }
       }
-      for (let p = 0; p < 6; p++) s += `<circle cx="${128 + (p % 2) * 4}" cy="${40 + p * 4}" r="1.6" fill="${hues[p % 5]}"/>`;
-      return '<defs><linearGradient id="wood" x1="0" x2="1"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></linearGradient></defs>' + s;
+      for (let p = 0; p < 5; p++) s += `<circle cx="${126 + (p % 2) * 3}" cy="${42 + p * 4}" r="1.3" fill="${hues[p % 5]}"/>`;
+      return s;
     },
-    'mancala-capture'() { return ART.mancala('#b5651d'); },
+    'mancala-capture'() { return ART.mancala('#b5773f', '#8e5728'); },
     'mancala-avalanche'() {
-      return ART.mancala('#7d3c98') + '<path d="M50 50c10-14 30-14 40 0s30 14 40 0" stroke="#fff" stroke-width="2" fill="none" stroke-dasharray="3 3" opacity=".8"/><path d="M126 46l4 4-5 3" stroke="#fff" stroke-width="2" fill="none" stroke-linecap="round" opacity=".8"/>';
+      return ART.mancala('#7c4fa8', '#5d3684') +
+        '<path d="M53 50c8-9 22-9 30 0s22 9 30 0" stroke="#fff" stroke-width="1.6" fill="none" stroke-dasharray="2.5 2.5" stroke-linecap="round" opacity=".85"/>';
     },
     seabattle() {
-      let s = '<rect x="30" y="5" width="100" height="90" rx="8" fill="#0b4f86"/>';
-      const heat = [
-        [0, .2, .3, .2, .1, 0], [.2, .5, .7, .5, .3, .1], [.3, .7, 1, .8, .4, .2],
-        [.2, .5, .8, .6, .3, .1], [.1, .3, .4, .3, .2, 0], [0, .1, .2, .1, 0, 0]];
-      heat.forEach((row, r) => row.forEach((v, c) => {
-        s += `<rect x="${36 + c * 15}" y="${10 + r * 13.5}" width="13" height="12" rx="2.5" fill="rgb(${Math.round(20 + 235 * v)},${Math.round(90 + 60 * v)},${Math.round(160 - 120 * v)})" opacity="${0.35 + v * 0.65}"/>`;
-      }));
-      s += '<rect x="96" y="37" width="28" height="12" rx="6" fill="#dfe6ee"/><circle cx="103" cy="43" r="2" fill="#f0463c"/>';
-      s += '<circle cx="73" cy="43" r="11" fill="none" stroke="#fff" stroke-width="2"/><path d="M73 28v8M73 50v8M58 43h8M80 43h8" stroke="#fff" stroke-width="2" stroke-linecap="round"/>';
+      let s = '<rect x="44" y="14" width="72" height="72" rx="10" fill="#143b61"/>';
+      const n = 5, size = 11.2, gap = 2, x0 = 50, y0 = 20;
+      const heat = ['01210', '13531', '25752', '13531', '01210'];
+      for (let r = 0; r < n; r++) for (let c = 0; c < n; c++) {
+        // Cold cells stay blue; likely cells go yellow to orange.
+        const fill = ['#1b4d7e', '#24608f', '#2f72a3', '#3f86b8', '#529acb', '#66afdc', '#7ac1ec', '#8fd3ff'][+heat[r][c]];
+        s += `<rect x="${x0 + c * (size + gap)}" y="${y0 + r * (size + gap)}" width="${size}" height="${size}" rx="2.4" fill="${fill}"/>`;
+      }
+      s += `<rect x="${x0 + 3 * (size + gap)}" y="${y0 + 3 * (size + gap)}" width="${size}" height="${size}" rx="2.4" fill="#ef4444"/>`;
+      s += `<path d="M${x0 + 3 * (size + gap) + 3.5} ${y0 + 3 * (size + gap) + 3.5}l4.2 4.2m0-4.2l-4.2 4.2" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/>`;
+      s += '<circle cx="80" cy="50" r="8.5" fill="none" stroke="#fff" stroke-width="1.8"/><path d="M80 38.5v5M80 56.5v5M68.5 50h5M86.5 50h5" stroke="#fff" stroke-width="1.8" stroke-linecap="round"/>';
       return s;
     },
     wordhunt() {
       const L = 'TOPSAREHINGLCDEW';
-      let s = '<rect x="38" y="4" width="84" height="92" rx="10" fill="#2e7d32" opacity=".9"/>';
-      for (let i = 0; i < 16; i++) s += tile(44 + (i % 4) * 19, 12 + Math.floor(i / 4) * 19, 16, L[i]);
-      s += '<path d="M52 20L71 39L90 39L109 58" stroke="#ff4f93" stroke-width="3.5" fill="none" stroke-linecap="round" stroke-linejoin="round" opacity=".85"/><circle cx="52" cy="20" r="4" fill="#2fb45a" stroke="#fff" stroke-width="1.5"/>';
+      let s = '<rect x="42" y="10" width="76" height="80" rx="12" fill="#2f7a4b"/>';
+      for (let i = 0; i < 16; i++) {
+        const onPath = [0, 5, 6, 11].includes(i);
+        s += tile(48 + (i % 4) * 16.6, 16 + Math.floor(i / 4) * 17.4, 14.6, L[i], i === 0 ? '#d4f5e0' : onPath ? '#efe2ff' : null);
+      }
+      const c = (i) => [48 + (i % 4) * 16.6 + 7.3, 16 + Math.floor(i / 4) * 17.4 + 7.3];
+      const path = [0, 5, 6, 11];
+      for (let k = 1; k < path.length; k++) {
+        const [x1, y1] = c(path[k - 1]), [x2, y2] = c(path[k]);
+        const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len, t = 5.4;
+        s += `<path d="M${(x1 + ux * t).toFixed(1)} ${(y1 + uy * t).toFixed(1)}L${(x2 - ux * t).toFixed(1)} ${(y2 - uy * t).toFixed(1)}" stroke="#f43f7a" stroke-width="2.2" stroke-linecap="round"/>`;
+      }
       return s;
     },
     anagrams() {
       let s = '';
-      'SILENT'.split('').forEach((ch, i) => { s += tile(18 + i * 21, 58, 19, ch); });
-      'LISTEN'.split('').forEach((ch, i) => { s += tile(18 + i * 21, 20, 19, ch, '#12b3a6', '#fff'); });
-      s += '<path d="M80 45l-4-4M80 45l4-4M80 45v-6" stroke="currentColor" stroke-width="2" stroke-linecap="round" opacity=".5"/>';
+      'LISTEN'.split('').forEach((ch, i) => { s += tile(26 + i * 18.5, 22, 16.5, ch, '#0d9488', '#fff'); });
+      'SILENT'.split('').forEach((ch, i) => { s += tile(26 + i * 18.5, 61, 16.5, ch); });
+      s += '<path d="M80 44v9M76.5 49.5L80 53l3.5-3.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity=".35"/>';
       return s;
     },
     wordbites() {
-      let s = '';
-      const piece = (x, y, a, b, vert, hue) => {
-        const w = vert ? 18 : 36, hgt = vert ? 36 : 18;
-        let out = `<rect x="${x}" y="${y}" width="${w}" height="${hgt}" rx="5" fill="hsl(${hue},85%,60%)"/>`;
-        out += `<text x="${x + 9}" y="${y + 13.5}" text-anchor="middle" font-size="12" font-weight="800" fill="#fff" font-family="ui-rounded,system-ui,sans-serif">${a}</text>`;
-        if (b) out += `<text x="${x + (vert ? 9 : 27)}" y="${y + (vert ? 31.5 : 13.5)}" text-anchor="middle" font-size="12" font-weight="800" fill="#fff" font-family="ui-rounded,system-ui,sans-serif">${b}</text>`;
+      const piece = (x, y, letters, vert, hue) => {
+        const w = vert ? 17 : 17 * letters.length + 2 * (letters.length - 1), hh = vert ? 17 * letters.length + 2 * (letters.length - 1) : 17;
+        let out = `<rect x="${x}" y="${y}" width="${w}" height="${hh}" rx="4.5" fill="hsl(${hue},75%,58%)"/>`;
+        letters.split('').forEach((ch, k) => {
+          const cx = x + 8.5 + (vert ? 0 : k * 19), cy = y + 12.2 + (vert ? k * 19 : 0);
+          out += `<text x="${cx}" y="${cy}" text-anchor="middle" font-size="10.5" font-weight="700" fill="#fff" font-family="${FONT}">${ch}</text>`;
+        });
         return out;
       };
-      s += piece(24, 41, 'B', 'I', false, 25) + piece(62, 23, 'X', 'T', true, 200) + piece(82, 41, 'E', '', false, 140).replace('width="36"', 'width="18"');
-      s += piece(102, 41, 'S', '', false, 320).replace('width="36"', 'width="18"');
-      s += piece(122, 12, 'O', 'N', true, 50);
+      return piece(30, 46, 'BI', false, 25) + piece(68, 27, 'XT', true, 210) + piece(87, 46, 'E', false, 145) + piece(106, 46, 'S', false, 330) + piece(125, 27, 'ON', true, 45);
+    },
+    chess() {
+      let s = '<clipPath id="art-board"><rect x="44" y="14" width="72" height="72" rx="9"/></clipPath><g clip-path="url(#art-board)"><rect x="44" y="14" width="72" height="72" fill="#b48a64"/>';
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if ((r + c) % 2 === 0) s += `<rect x="${44 + c * 18}" y="${14 + r * 18}" width="18" height="18" fill="#eedcbc"/>`;
+      s += '</g>';
+      s += pawn(71, 50, true) + pawn(89, 32, false) + pawn(53, 68, true) + pawn(107, 14, false);
       return s;
     },
-  };
-
-  ART.chess = () => {
-    let s = '<rect x="40" y="10" width="80" height="80" rx="6" fill="#b58863"/>';
-    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if ((r + c) % 2 === 0) s += `<rect x="${40 + c * 20}" y="${10 + r * 20}" width="20" height="20" fill="#f0d9b5"/>`;
-    const glyph = (x, y, g, white) => `<text x="${x}" y="${y}" text-anchor="middle" font-size="19" fill="${white ? '#fff' : '#1b1b1f'}" stroke="${white ? '#1b1b1f' : '#fff'}" stroke-width=".6" font-family="DejaVu Sans,Segoe UI Symbol,Noto Sans Symbols 2,sans-serif">${g}&#xFE0E;</text>`;
-    s += glyph(70, 47, '♞', true) + glyph(90, 27, '♚', false) + glyph(110, 67, '♛', true) + glyph(50, 87, '♜', false);
-    s += '<path d="M72 45 L104 23" stroke="#2fb45a" stroke-width="3" stroke-linecap="round" opacity=".85"/>';
-    return s;
-  };
-  ART.checkers = () => {
-    let s = '<rect x="40" y="10" width="80" height="80" rx="6" fill="#f3e0c4"/>';
-    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if ((r + c) % 2 === 0) s += `<rect x="${40 + c * 20}" y="${10 + r * 20}" width="20" height="20" fill="#6d4c41"/>`;
-    const piece = (x, y, red, king) => `<circle cx="${x}" cy="${y}" r="7.5" fill="${red ? '#e53935' : '#26262b'}" stroke="rgba(0,0,0,.35)"/><circle cx="${x}" cy="${y}" r="4.5" fill="none" stroke="rgba(255,255,255,.35)"/>` + (king ? `<path d="M${x - 4} ${y + 1}l1.5-4 2.5 2.5 2.5-2.5 1.5 4z" fill="#ffd54f"/>` : '');
-    s += piece(70, 40, true) + piece(90, 20, false, true) + piece(50, 60, true) + piece(110, 80, false) + piece(90, 60, true, true);
-    return s;
-  };
-  ART.dots = () => {
-    let s = '';
-    const P = (i) => 46 + i * 22, Q = (i) => 16 + i * 22;
-    s += `<rect x="${P(0) + 2}" y="${Q(0) + 2}" width="18" height="18" rx="3" fill="#2f7bff" opacity=".35"/><rect x="${P(1) + 2}" y="${Q(1) + 2}" width="18" height="18" rx="3" fill="#ff4f93" opacity=".35"/>`;
-    const lines = [[0, 0, 1, 0], [0, 0, 0, 1], [1, 0, 1, 1], [0, 1, 1, 1], [1, 1, 2, 1], [1, 1, 1, 2], [2, 1, 2, 2], [1, 2, 2, 2], [2, 0, 3, 0], [3, 2, 3, 3]];
-    lines.forEach(([a, b, c, d], k) => { s += `<line x1="${P(a)}" y1="${Q(b)}" x2="${P(c)}" y2="${Q(d)}" stroke="${k < 4 ? '#2f7bff' : '#ff4f93'}" stroke-width="3.5" stroke-linecap="round"/>`; });
-    for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) s += `<circle cx="${P(c)}" cy="${Q(r)}" r="3" fill="currentColor"/>`;
-    return s;
-  };
-  ART.filler = () => {
-    const cols = ['#e64553', '#8ccf4d', '#fad140', '#4aa7ea', '#6c4bb4', '#454545'];
-    const grid = ['301524', '052413', '240351', '413502', '125043'];
-    let s = '';
-    grid.forEach((row, r) => row.split('').forEach((ch, c) => {
-      let k = +ch;
-      if (r >= 3 && c <= 1) k = 1; // bottom-left area
-      if (r <= 1 && c >= 4) k = 0; // top-right area
-      s += `<rect x="${35 + c * 15.5}" y="${12 + r * 15.5}" width="14.5" height="14.5" rx="2" fill="${cols[k]}"/>`;
-    }));
-    return s;
+    checkers() {
+      let s = '<clipPath id="art-board2"><rect x="44" y="14" width="72" height="72" rx="9"/></clipPath><g clip-path="url(#art-board2)"><rect x="44" y="14" width="72" height="72" fill="#f1e1c8"/>';
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) if ((r + c) % 2 === 0) s += `<rect x="${44 + c * 18}" y="${14 + r * 18}" width="18" height="18" fill="#6e4f43"/>`;
+      s += '</g>';
+      const piece = (c, r, red, king) => {
+        const cx = 53 + c * 18, cy = 23 + r * 18;
+        return `<circle cx="${cx}" cy="${cy}" r="6.6" fill="${red ? '#e23d3d' : '#222226'}"/>` + (king ? crown(cx, cy, '#fcd34d') : `<circle cx="${cx}" cy="${cy}" r="3.6" fill="none" stroke="rgba(255,255,255,.25)" stroke-width="1"/>`);
+      };
+      return s + piece(1, 1, false, true) + piece(3, 1, false) + piece(0, 2, true) + piece(2, 2, true, true) + piece(1, 3, true) + piece(3, 3, true);
+    },
+    dots() {
+      let s = '';
+      const P = (i) => 53 + i * 18, Q = (i) => 23 + i * 18;
+      s += `<rect x="${P(0) + 2}" y="${Q(0) + 2}" width="14" height="14" rx="3" fill="#2f7bff" opacity=".28"/><rect x="${P(1) + 2}" y="${Q(1) + 2}" width="14" height="14" rx="3" fill="#f43f7a" opacity=".28"/>`;
+      const lines = [[0, 0, 1, 0, 0], [0, 0, 0, 1, 0], [1, 0, 1, 1, 0], [0, 1, 1, 1, 0], [1, 1, 2, 1, 1], [1, 1, 1, 2, 1], [2, 1, 2, 2, 1], [1, 2, 2, 2, 1], [2, 0, 3, 0, 0], [3, 2, 3, 3, 1], [0, 3, 1, 3, 0]];
+      lines.forEach(([a, b, c, d, p]) => { s += `<line x1="${P(a)}" y1="${Q(b)}" x2="${P(c)}" y2="${Q(d)}" stroke="${p ? '#f43f7a' : '#2f7bff'}" stroke-width="2.6" stroke-linecap="round"/>`; });
+      for (let r = 0; r < 4; r++) for (let c = 0; c < 4; c++) s += `<circle cx="${P(c)}" cy="${Q(r)}" r="2.4" fill="currentColor"/>`;
+      return s;
+    },
+    filler() {
+      const cols = ['#e64553', '#8ccf4d', '#fad140', '#4aa7ea', '#6c4bb4', '#454545'];
+      const grid = ['301524', '052413', '240351', '413502'];
+      let s = '';
+      grid.forEach((row, r) => row.split('').forEach((ch, c) => {
+        let k = +ch;
+        if (r >= 2 && c <= 1) k = 1; // you, bottom left
+        if (r <= 1 && c >= 4) k = 0; // them, top right
+        s += `<rect x="${35 + c * 15.4}" y="${19 + r * 15.4}" width="14" height="14" rx="2.6" fill="${cols[k]}"/>`;
+      }));
+      return s;
+    },
   };
 
   GP.art = function (id) {

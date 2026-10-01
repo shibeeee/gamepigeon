@@ -233,8 +233,6 @@
       h('div', { class: 'field' }, h('label', null, 'Bot strength for new games'),
         GP.segmented([{ value: 'easy', label: 'Easy' }, { value: 'normal', label: 'Normal' }, { value: 'hard', label: 'Hard' }, { value: 'max', label: 'Best' }],
           S.strength, (v) => GP.setSetting('strength', v))),
-      h('div', { class: 'field' }, h('label', null, 'Word game timer'),
-        GP.segmented([60, 80, 90, 120].map((n) => ({ value: n, label: n + ' s' })), GP.store.get('roundLen', 80), (v) => GP.store.set('roundLen', v))),
       h('h4', null, 'Record vs computer'),
       recordsTable(),
       h('h4', null, 'Your data'),
@@ -296,9 +294,9 @@
     }
   });
 
-  const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="var(--accent)"/>
-    <path d="M18 40c0-10 7-18 17-18 6 0 10 3 12 6l6-1-4 5c0 9-7 16-17 16h-9l-5 5z" fill="#fff"/>
-    <circle cx="40" cy="30" r="2.6" fill="#1b1b1f"/></svg>`;
+  const LOGO = `<svg viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="15" fill="var(--accent)"/>
+    <path d="M17 43.5c0-11.3 8.6-20.5 19.5-20.5 5.6 0 9.6 2.4 11.8 5.6l6.2-.6-4.4 5.4c-.3 10.4-8.3 18.1-18.6 18.1H25l-6 5v-13z" fill="#fff"/>
+    <circle cx="41.5" cy="30.5" r="2.5" fill="var(--accent)"/></svg>`;
   GP.LOGO = LOGO;
 
   /* ---------- offline support and updates ---------- */
