@@ -11,7 +11,8 @@ importScripts(
   '../engines/mancala.js' + V,
   '../engines/checkers.js' + V,
   '../engines/dots.js' + V,
-  '../engines/filler.js' + V
+  '../engines/filler.js' + V,
+  '../engines/knockout.js' + V
 );
 
 self.onmessage = function (e) {

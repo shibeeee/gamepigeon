@@ -827,3 +827,24 @@ html.text-xl { font-size: 125%; }
 .contrast .btn, .contrast .seg, .contrast .card { border: 2px solid var(--border); }
 .contrast .c4 .disc, .contrast .oth .disc, .contrast .ck-piece { outline: 2px solid #000; outline-offset: -2px; }
 .contrast .tile { outline: 2px solid #4a3a14; }
+
+/* ---------- Knockout ---------- */
+.ko-host { width: min(100%, 500px); }
+.ko { width: 100%; display: block; border-radius: 16px; touch-action: none; user-select: none; }
+.ko-water { fill: #7cc4ea; }
+.ko-ice { fill: #f2f9fd; stroke: #cfe6f3; stroke-width: 0.012; }
+.ko-pen { cursor: grab; }
+.ko-pen .ko-body { stroke: rgba(0, 0, 0, 0.15); stroke-width: 0.006; }
+.ko-pen.t0 .ko-body { fill: #2f7bff; }
+.ko-pen.t1 .ko-body { fill: #f43f7a; }
+.ko-belly { fill: #fff; opacity: 0.92; }
+.ko-beak { fill: #fbbf24; }
+.ko-pen.off { opacity: 0.35; }
+.ko-arrow { stroke: #1d1d20; stroke-width: 0.022; stroke-linecap: round; }
+.ko-head { fill: #1d1d20; }
+.ko-pow, .ko-stay { font-size: 0.07px; font-weight: 700; fill: #1d1d20; text-anchor: middle; font-family: var(--font); pointer-events: none; paint-order: stroke; stroke: #f2f9fd; stroke-width: 0.025; stroke-linejoin: round; }
+.ko-stay { fill: #6b6b73; }
+.kop0 { background: #2f7bff; }
+.ko-slider { display: flex; align-items: center; gap: 10px; }
+.ko-range { flex: 1; accent-color: var(--accent); }
+.ko-val { min-width: 4.5em; text-align: right; font-weight: 600; font-size: 0.86rem; font-variant-numeric: tabular-nums; }
