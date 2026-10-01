@@ -105,6 +105,11 @@
       if (!list.length) grid.appendChild(h('p', { class: 'empty' }, prefs.filter === 'fav' ? 'Tap the star on a game to pin it here.' : 'No games match.'));
     }
     search.addEventListener('input', draw);
+    // Enter opens the first game that matches.
+    search.addEventListener('keydown', (e) => {
+      const first = e.key === 'Enter' && grid.querySelector('.game-card');
+      if (first) location.hash = first.getAttribute('href');
+    });
 
     const inProgress = GP.gameList.filter((g) => progressOf(g) === 'In progress')
       .sort((a, b) => (recent[b.id] || 0) - (recent[a.id] || 0)).slice(0, 3);
@@ -225,7 +230,7 @@
       GP.toggle('Sounds', S.sound, (v) => GP.setSetting('sound', v)),
       GP.toggle('Vibration', S.haptics, (v) => GP.setSetting('haptics', v), 'Phones only'),
       h('h4', null, 'Games'),
-      h('div', { class: 'field' }, h('label', null, 'Bot level for new games'),
+      h('div', { class: 'field' }, h('label', null, 'Bot strength for new games'),
         GP.segmented([{ value: 'easy', label: 'Easy' }, { value: 'normal', label: 'Normal' }, { value: 'hard', label: 'Hard' }, { value: 'max', label: 'Best' }],
           S.strength, (v) => GP.setSetting('strength', v))),
       h('div', { class: 'field' }, h('label', null, 'Word game timer'),

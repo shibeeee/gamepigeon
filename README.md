@@ -68,7 +68,8 @@ installed, works offline once loaded, and saves everything automatically.
 - **Very strong, not proven perfect:** Checkers, Gomoku, Mancala and the rest
   of Reversi, Dots and Boxes and Filler. These games are too big to solve
   completely on a phone, so the bot searches as deep as it can in the time
-  you give it (Bot level: Easy to Best).
+  you give it (Bot strength: Fast to Best, which also sets how hard the
+  best-move suggestion thinks).
 
 ## Running it
 

@@ -413,7 +413,19 @@
       const slot = el.appendChild(h('div', { class: 'coach-slot' }));
       const ins = this.insight();
       const s = this.state;
-      if (this.editing || this.engine.result(s)) return;
+      if (this.editing) return;
+      const res = this.engine.result(s);
+      if (res) {
+        // Game over: offer a review and a rematch right here.
+        const rv = this.review;
+        const text = rv && !rv.running ? rv.summary : rv && rv.running ? 'Reviewing ' + rv.done + ' of ' + rv.total + ' moves' : 'Game over';
+        slot.appendChild(h('div', { class: 'coach done' }, GP.icon(res.winner === this.me ? 'star' : 'check'),
+          h('span', { class: 'coach-text' }, h('b', null, res.winner == null ? "It's a tie" : res.winner === this.me ? 'You won' : this.who(res.winner) + ' won'),
+            h('small', null, text)),
+          this.history.length > 2 && !rv ? button('Review', { class: 'btn-sm', title: 'Find the mistakes in this game', onclick: () => this.runReview() }) : null,
+          button('Play again', { kind: 'primary', class: 'btn-sm', onclick: () => this.newGame() })));
+        return;
+      }
       const likely = this.likelyMoves();
       if (likely.length && s.turn !== this.me) {
         slot.appendChild(h('div', { class: 'coach likely' }, GP.icon('bot'),
@@ -561,6 +573,7 @@
         best[i] = r || { score: 0 };
         rv.done = Math.min(i + 1, rv.total);
         this.renderPanel();
+        this.renderControls();
       }
       if (this.review !== rv) return;
       const count = [{ b: 0, m: 0, i: 0 }, { b: 0, m: 0, i: 0 }];

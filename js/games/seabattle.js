@@ -91,13 +91,21 @@
       GP.sound.play('click');
     }
 
+    const simCache = { key: null, val: null };
     function render() {
       closePopover();
       const n = st.size;
       // While hunting (no open hits) the counting method is smooth and exact enough;
       // once there are hits, simulated fleets give sharper chances.
       const hasHit = st.cells.some((v) => v === HIT);
-      const sim = hasHit && Object.values(st.remaining).some((x) => x > 0) ? SB.simulate(n, st.cells, st.remaining, 160) : null;
+      // Simulations are random, so keep the result for the same board: the
+      // stars shouldn't move around when nothing changed.
+      const simKey = n + ':' + st.cells.join('') + JSON.stringify(st.remaining);
+      if (simCache.key !== simKey) {
+        simCache.key = simKey;
+        simCache.val = hasHit && Object.values(st.remaining).some((x) => x > 0) ? SB.simulate(n, st.cells, st.remaining, 160) : null;
+      }
+      const sim = simCache.val;
       let a;
       if (sim) a = { score: sim.prob, max: sim.max, best: sim.best, blocked: sim.blocked };
       else {

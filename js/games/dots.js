@@ -40,7 +40,11 @@
       if (v.hint && v.hint.move === l) cls.push('hint');
       if (!drawn && legal.has(l) && v.canPlay) cls.push('playable', 's' + s.turn);
       svg.appendChild(h('svg:line', { x1, y1, x2, y2, class: cls.join(' ') }));
-      const hit = h('svg:line', { x1, y1, x2, y2, class: 'dhit' });
+      // Tap target: the diamond around the line, so the whole board is
+      // covered and a tap anywhere picks the nearest line.
+      const mx = (x1 + x2) / 2, my = (y1 + y2) / 2;
+      const pts = L.horiz ? [[x1, y1], [mx, my - 0.5], [x2, y2], [mx, my + 0.5]] : [[x1, y1], [mx + 0.5, my], [x2, y2], [mx - 0.5, my]];
+      const hit = h('svg:polygon', { points: pts.map((q) => q.join(',')).join(' '), class: 'dhit' + (drawn && !v.editing ? ' off' : '') });
       if (v.editing || (!drawn && legal.has(l) && v.canPlay)) hit.addEventListener('click', () => (v.editing ? v.onEdit(l) : v.onMove(l)));
       svg.appendChild(hit);
     }

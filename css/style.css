@@ -753,8 +753,9 @@ kbd {
 .dline.last { stroke: var(--accent); }
 .dline.hint { stroke: var(--good); stroke-width: 0.12; animation: blink 1s infinite; }
 @keyframes blink { 50% { opacity: 0.35; } }
-.dhit { stroke: transparent; stroke-width: 0.34; cursor: pointer; }
-.dhit:hover + .ddot, .dline.playable + .dhit:hover { stroke: rgba(124, 92, 255, 0.25); }
+.dhit { fill: transparent; cursor: pointer; }
+.dhit.off { cursor: default; }
+.dline.playable:has(+ .dhit:hover) { stroke: color-mix(in srgb, var(--accent) 55%, transparent); stroke-width: 0.1; }
 .dbox.p0 { fill: color-mix(in srgb, #2f7bff 30%, transparent); }
 .dbox.p1 { fill: color-mix(in srgb, #ff4f93 30%, transparent); }
 .dbox-t { font-size: 0.26px; font-weight: 800; text-anchor: middle; fill: var(--text); opacity: 0.7; font-family: var(--font); pointer-events: none; }
