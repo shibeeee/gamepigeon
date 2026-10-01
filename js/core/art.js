@@ -168,13 +168,6 @@
       }));
       return s;
     },
-    knockout() {
-      let s = '<rect x="30" y="8" width="100" height="84" rx="12" fill="#7cc4ea"/><rect x="44" y="18" width="72" height="64" rx="8" fill="#f2f9fd"/>';
-      const pen = (x, y, c) => `<circle cx="${x}" cy="${y}" r="6.5" fill="${c}"/><ellipse cx="${x}" cy="${y + 1.5}" rx="3.6" ry="3.2" fill="#fff"/><circle cx="${x}" cy="${y - 1}" r="1.1" fill="#fbbf24"/>`;
-      s += pen(62, 62, '#2f7bff') + pen(98, 66, '#2f7bff') + pen(70, 34, '#f43f7a') + pen(100, 30, '#f43f7a');
-      s += '<path d="M66 56L68.5 44" stroke="#1d1d20" stroke-width="2" stroke-linecap="round"/><path d="M66.2 43.2l4.6 1.6-1.4-5.2z" fill="#1d1d20"/>';
-      return s;
-    },
   };
 
   GP.art = function (id) {

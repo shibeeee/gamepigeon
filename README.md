@@ -26,7 +26,6 @@ installed, works offline once loaded, and saves everything automatically.
 | **Mancala Capture / Avalanche** | Deep search that follows extra turns and captures to the end, with a step-by-step move preview. Random boards: type in the pebbles from your game. |
 | **Dots and Boxes** | Takes free boxes, avoids handing any over, and searches the endgame exactly. |
 | **Filler** | Looks about 20 turns ahead; read the board from a screenshot. |
-| **Knockout** | Drag the penguins to match your game and get the best aim and power for each of yours. Both teams move at once, so it tests your shots against many likely enemy moves with a physics model and picks what works best on average. Watch a replay of the plan. |
 | **Tic Tac Toe** | Perfect play, with every square labeled Win, Draw or Lose. |
 
 ## Features

@@ -7,7 +7,7 @@ const vm = require('vm');
 const ROOT = path.join(__dirname, '..');
 for (const f of ['data/words.js', 'js/engines/common.js', 'js/engines/c4solver.js', 'data/c4book.js', 'js/engines/connect4.js',
   'js/engines/othello.js', 'js/engines/gomoku.js', 'js/engines/tictactoe.js', 'js/engines/mancala.js', 'js/engines/words.js',
-  'js/engines/seabattle.js', 'js/engines/checkers.js', 'js/engines/dots.js', 'js/engines/filler.js', 'js/engines/knockout.js']) {
+  'js/engines/seabattle.js', 'js/engines/checkers.js', 'js/engines/dots.js', 'js/engines/filler.js']) {
   vm.runInThisContext(fs.readFileSync(path.join(ROOT, f), 'utf8'), { filename: f });
 }
 globalThis.Chess = require(path.join(ROOT, 'vendor/chess/chess.js')).Chess;
@@ -252,24 +252,6 @@ test('simulation gives chances and targets hits', () => {
   const r = SB.simulate(10, cells, SB.FLEETS[10], 300);
   ok(r && r.samples > 100);
   ok(r.best.every((i) => [34, 43, 45, 54].includes(i)), 'best ' + r.best);
-});
-
-console.log('Knockout');
-const KO = GP.engines.knockout;
-test('a head-on hit pushes a penguin off the edge', () => {
-  const st = { ice: 1, shape: 'square', slide: 1 };
-  const end = KO.simulate(st, [{ id: 'a', team: 0, x: 0, y: 0.3 }, { id: 'b', team: 1, x: 0, y: -0.8 }], { a: { dx: 0, dy: -1 } });
-  ok(end.find((p) => p.id === 'b').out, 'target should fall');
-});
-test('a penguin left alone stays put', () => {
-  const end = KO.simulate({ ice: 1, shape: 'circle', slide: 1 }, [{ id: 'a', team: 0, x: 0.2, y: 0.1 }], {});
-  eq([end[0].x, end[0].y, end[0].out], [0.2, 0.1, false]);
-});
-test('plan goes after a penguin on the edge and keeps yours on', () => {
-  const st = { ice: 1, shape: 'square', slide: 1, pens: [{ id: 'a', team: 0, x: 0, y: 0.2 }, { id: 'b', team: 1, x: 0, y: -0.88 }] };
-  const r = KO.plan(st, { timeMs: 600 });
-  ok(r.expect.lostTheirs > 0.5, 'should knock it off often: ' + r.expect.lostTheirs);
-  ok(r.expect.lostMine < 0.5, 'should usually survive: ' + r.expect.lostMine);
 });
 
 console.log(`\n${passed} passed, ${failed} failed`);
