@@ -148,6 +148,61 @@
 
   const layout = () => GP.store.get('mancalaLayout', 'auto');
 
+  /*
+   * Random boards: type the count in each pit as GamePigeon shows it. Pit
+   * numbers match the small numbers on the board, and the board updates as
+   * you type. GamePigeon deals both sides the same, so their side copies
+   * yours unless you say otherwise.
+   */
+  function startPicker(game) {
+    const first = game.history[0].pits, me = game.me;
+    const cur = game.options.start || {
+      mine: [0, 1, 2, 3, 4, 5].map((k) => first[E.pitIndex(me, k)]),
+      theirs: null,
+    };
+    const apply = (start) => {
+      if (game.idx > 0 && !E.result(game.state)) { game.setOption('start', start); return; }
+      game.options.start = start;
+      game.reset(true);
+      game.update();
+    };
+    const row = (side, values) => h('div', { class: 'mc-start-row' },
+      values.map((n, k) => {
+        const inp = h('input', {
+          class: 'text-input mc-start-in', inputmode: 'numeric', maxlength: 2, autocomplete: 'off',
+          value: String(n), 'aria-label': (side === 'mine' ? 'Your' : 'Their') + ' pit ' + (k + 1),
+          dataset: { fk: 'mc-' + side + k },
+        });
+        inp.addEventListener('focus', () => inp.select());
+        inp.addEventListener('keydown', (e) => { if (e.key === 'Enter') inp.blur(); });
+        inp.addEventListener('input', () => {
+          const t = inp.value.replace(/\D/g, '').slice(0, 2);
+          inp.value = t;
+          if (!t) return; // wait for a number
+          // A single 1 might become 10 to 19, so only move on after other digits.
+          if (t.length === 2 || t !== '1') {
+            const next = inp.closest('.mc-start-row').querySelectorAll('input')[k + 1]
+              || (side === 'mine' && cur.theirs && GP.$('[data-fk="mc-theirs0"]', inp.closest('.mc-start')));
+            if (next) next.focus(); else inp.blur();
+          }
+          const start = { mine: cur.mine.slice(), theirs: cur.theirs && cur.theirs.slice() };
+          start[side][k] = Number(t);
+          apply(start);
+        });
+        return h('label', { class: 'mc-start-cell' }, h('small', null, k + 1), inp);
+      }));
+    const total = (a) => a.reduce((x, y) => x + y, 0);
+    return h('div', { class: 'mc-start' },
+      h('div', { class: 'mc-start-head' }, h('span', null, 'Your pits'),
+        h('button', { type: 'button', class: 'link', onclick: () => apply(E.randomStart()) }, 'Shuffle')),
+      row('mine', cur.mine),
+      GP.toggle('Their side is the same', !cur.theirs, (same) => apply({ mine: cur.mine.slice(), theirs: same ? null : cur.mine.slice() })),
+      cur.theirs ? h('div', { class: 'mc-start-head' }, h('span', null, 'Their pits')) : null,
+      cur.theirs ? row('theirs', cur.theirs) : null,
+      h('p', { class: 'hint-text' }, 'Pit numbers match the small numbers on the board. ' +
+        GP.plural(total(cur.mine) + total(cur.theirs || cur.mine), 'pebble') + ' in total.'));
+  }
+
   function makeCfg(mode) {
     return {
       id: 'mancala-' + mode,
@@ -159,10 +214,10 @@
       evalScale: 600,
       options: [{
         key: 'pebbles', label: 'Pebbles in each pit', default: 4,
-        choices: [2, 3, 4, 5, 6, 8].map((n) => ({ value: n, label: String(n) })).concat({ value: 'random', label: 'Random' }),
+        choices: [2, 3, 4, 5, 6, 8].map((n) => ({ value: n, label: String(n) })).concat({ value: 'random', label: 'Random', title: 'Type in the counts from your game' }),
       }, {
-        key: 'range', label: 'Random between', default: '2-6', showIf: (o) => o.pebbles === 'random',
-        choices: ['1-4', '2-6', '3-8', '1-10'].map((r) => ({ value: r, label: r.replace('-', ' and ') })),
+        key: 'start', label: 'Copy the pebbles from your game', default: null, showIf: (o) => o.pebbles === 'random',
+        render: startPicker,
       }],
       render,
       explain(s, k) {
@@ -204,7 +259,8 @@
     help: `<p>Pick up all the pebbles in one of your pits and drop them one by one around the board, into your store but not theirs. End in your store and you go again. Most pebbles in your store wins.</p>
       <p>Land in an empty pit on your side and you take it plus everything across from it.</p>
       <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
-      <li>Turn on <b>Preview</b> to watch a move before you make it.</li></ul>`,
+      <li>Turn on <b>Preview</b> to watch a move before you make it.</li>
+      <li>Random board? Pick <b>Random</b> under Board and type the number in each pit from your game.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, makeCfg('capture')),
   });
 
@@ -216,7 +272,8 @@
     color: '#8e44ad',
     help: `<p>Like regular Mancala, but if your last pebble lands in a pit with pebbles in it, you pick them all up and keep going. Your turn ends in an empty pit.</p>
       <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
-      <li>Turns can get long. Turn on <b>Preview</b> to watch the whole chain.</li></ul>`,
+      <li>Turns can get long. Turn on <b>Preview</b> to watch the whole chain.</li>
+      <li>Random board? Pick <b>Random</b> under Board and type the number in each pit from your game.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, makeCfg('avalanche')),
   });
 })();

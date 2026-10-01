@@ -148,7 +148,7 @@
       statusEl.appendChild(GP.icon('target'));
       statusEl.appendChild(h('span', { class: 'status-text' }, done
         ? 'Fleet destroyed! You win.'
-        : a.best.length ? 'Best shot: ' + a.best.slice(0, 3).map(col).join(', ') + (a.best.length > 3 ? ' (and ' + (a.best.length - 3) + ' more)' : '')
+        : a.best.length ? 'Best shot: ' + (a.best.length > 2 ? 'any star (' + a.best.length + ' tied)' : a.best.map(col).join(' or '))
           + ' · ' + Math.round(a.max * 100) + '% chance' : 'Tap a square after each shot'));
 
       // Side panel

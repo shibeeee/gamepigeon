@@ -57,6 +57,13 @@
     return false;
   }
 
+  /* A random deal, one to six pebbles per pit, the same on both sides. */
+  function randomStart() {
+    const mine = [];
+    for (let k = 0; k < 6; k++) mine.push(1 + Math.floor(Math.random() * 6));
+    return { mine, theirs: null };
+  }
+
   function sideEmpty(p, side) {
     const o = side === 0 ? 0 : 7;
     for (let k = 0; k < 6; k++) if (p[o + k]) return false;
@@ -144,18 +151,28 @@
     STORE,
     pitIndex,
     /*
-     * pebbles: a number, or 'random' with range 'lo-hi'. Random boards are
-     * mirrored (each player's k-th pit gets the same count) so they stay fair.
+     * pebbles: a number, or 'random'. For random boards the player types the
+     * counts from their game: start = { mine: [6], theirs: [6] or null } where
+     * null means their side matches yours (pit k gets the same count on both
+     * sides, which is how GamePigeon deals them). Without counts the pits are
+     * filled at random.
      */
     initial(opts) {
-      const n = (opts && opts.pebbles) || 4;
+      const o = opts || {};
+      const n = o.pebbles || 4;
       const pits = new Array(14).fill(0);
       if (n === 'random') {
-        const [lo, hi] = String((opts && opts.range) || '2-6').split('-').map(Number);
-        for (let k = 0; k < 6; k++) pits[k] = pits[7 + k] = lo + Math.floor(Math.random() * (hi - lo + 1));
+        const st = o.start || randomStart();
+        const me = o.me || 0;
+        const clean = (a, k) => Math.max(0, Math.min(99, Math.floor(Number(a && a[k]) || 0)));
+        for (let k = 0; k < 6; k++) {
+          pits[pitIndex(me, k)] = clean(st.mine, k);
+          pits[pitIndex(1 - me, k)] = clean(st.theirs || st.mine, k);
+        }
       } else for (let k = 0; k < 6; k++) pits[k] = pits[7 + k] = n;
-      return { pits, turn: opts && opts.first ? 1 : 0, mode: (opts && opts.mode) || 'capture', last: null };
+      return { pits, turn: o.first ? 1 : 0, mode: o.mode || 'capture', last: null };
     },
+    randomStart,
     /* What a move does: extra turn, pebbles banked, captures, avalanche pick-ups. */
     outcome(s, k) {
       const p = s.pits.slice(), t = [];

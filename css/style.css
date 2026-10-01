@@ -161,6 +161,7 @@ kbd {
 }
 .text-input:focus, .search:focus { border-color: var(--accent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 25%, transparent); }
 .mono { letter-spacing: 0.12em; text-transform: uppercase; font-weight: 700; }
+.mono::placeholder { letter-spacing: normal; text-transform: none; font-weight: 500; }
 .warn { color: var(--warn); font-weight: 600; min-height: 1em; }
 .empty { color: var(--muted); text-align: center; padding: 24px; }
 
@@ -282,10 +283,10 @@ kbd {
 .status.draw { background: var(--surface-3); }
 .status.edit { background: color-mix(in srgb, var(--warn) 18%, var(--surface)); }
 @keyframes bounce { 40% { transform: scale(1.08); } }
-.dots { display: inline-flex; gap: 3px; }
-.dots i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: dot 1s infinite; }
-.dots i:nth-child(2) { animation-delay: 0.15s; }
-.dots i:nth-child(3) { animation-delay: 0.3s; }
+.think-dots { display: inline-flex; gap: 3px; }
+.think-dots i { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: dot 1s infinite; }
+.think-dots i:nth-child(2) { animation-delay: 0.15s; }
+.think-dots i:nth-child(3) { animation-delay: 0.3s; }
 @keyframes dot { 0%, 100% { opacity: 0.2; transform: translateY(0); } 50% { opacity: 1; transform: translateY(-3px); } }
 
 .controls { display: flex; flex-direction: column; gap: 10px; align-items: center; width: 100%; }
@@ -816,8 +817,11 @@ html.text-xl { font-size: 125%; }
 .coach-text small { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; line-height: 1.25; }
 .coach.likely { flex-wrap: nowrap; }
 .coach.likely .coach-text small { -webkit-line-clamp: 1; }
-.likely-moves { flex-wrap: nowrap; flex: none; }
+.likely-moves { flex-wrap: nowrap; flex: 0 1 auto; min-width: 0; overflow-x: auto; scrollbar-width: none; }
+.likely-moves::-webkit-scrollbar { display: none; }
+.likely-moves .btn-sm { flex: none; }
 @media (max-width: 420px) {
+  .coach.likely .coach-text { flex: none; }
   .coach.likely .coach-text small { display: none; }
   .likely-moves .btn-sm { padding: 4px 8px; }
 }
@@ -835,3 +839,11 @@ html.text-xl { font-size: 125%; }
 .promo-btn { aspect-ratio: 1; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: #f0d9b5; cursor: pointer; }
 .promo-btn:hover { background: #e2c595; }
 .promo-btn .cp { font-size: min(7vw, 40px); }
+
+/* Mancala random start: type the count in each pit */
+.mc-start { display: flex; flex-direction: column; gap: 8px; }
+.mc-start-head { display: flex; align-items: center; font-weight: 700; font-size: 0.85rem; }
+.mc-start-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; }
+.mc-start-cell { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+.mc-start-cell small { color: var(--muted); font-size: 0.72rem; font-weight: 700; }
+.mc-start-in { width: 100%; min-width: 0; padding: 8px 0; text-align: center; font-size: 1.05rem; font-weight: 700; font-variant-numeric: tabular-nums; }

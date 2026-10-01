@@ -88,7 +88,7 @@
       }
     }
     initOptions(first) {
-      return Object.assign({}, this.cfg.initialOptions, this.options, { first });
+      return Object.assign({}, this.cfg.initialOptions, this.options, { first, me: this.me });
     }
     get state() { return this.history[this.idx]; }
 
@@ -139,6 +139,12 @@
     aiMove() {
       if (this.engine.result(this.state)) return;
       this.think(true);
+    }
+    /* Changes a board option. newGame's Undo restores the old setting too. */
+    setOption(key, value) {
+      const before = Object.assign({}, this.options);
+      this.options[key] = value;
+      this.newGameWith(before);
     }
     /* A setting changed: start over, but let Undo restore the old setting and game. */
     newGameWith(oldOptions) {
@@ -327,11 +333,11 @@
       } else if (this.thinking && this.mode === 'ai' && s.turn !== this.me) { text = 'Computer is thinking'; cls = 'thinking'; }
       else if (this.thinking && this.botTurn()) { text = 'Bot is thinking'; cls = 'thinking'; }
       else if (s.turn === this.me) text = this.cfg.yourTurnText ? this.cfg.yourTurnText(this) : 'Your turn';
-      else text = this.mode === 'ai' ? "Computer's turn" : 'Their turn: tap the move they made';
+      else text = this.mode === 'ai' ? "Computer's turn" : 'Their turn: tap their move';
       el.className = 'status ' + cls;
       el.appendChild(this.cfg.swatch(res ? (res.winner == null ? s.turn : res.winner) : s.turn));
       el.appendChild(h('span', { class: 'status-text' }, text));
-      if (this.thinking) el.appendChild(h('span', { class: 'dots' }, h('i'), h('i'), h('i')));
+      if (cls === 'thinking') el.appendChild(h('span', { class: 'think-dots' }, h('i'), h('i'), h('i')));
       if (!res && !this.editing && this.cfg.passMove != null) {
         const legal = this.engine.legal(s);
         if (legal.length === 1 && legal[0] === this.cfg.passMove && !(this.mode === 'ai' && s.turn !== this.me)) {
@@ -393,7 +399,7 @@
         return;
       }
       if (!ins) {
-        if (this.thinking && !(this.mode === 'ai' && s.turn !== this.me)) slot.appendChild(h('div', { class: 'coach thinking' }, GP.icon('bulb'), h('span', null, 'Thinking'), h('span', { class: 'dots' }, h('i'), h('i'), h('i'))));
+        if (this.thinking && !(this.mode === 'ai' && s.turn !== this.me)) slot.appendChild(h('div', { class: 'coach thinking' }, GP.icon('bulb'), h('span', null, 'Thinking'), h('span', { class: 'think-dots' }, h('i'), h('i'), h('i'))));
         return;
       }
       const canPlay = !(this.mode === 'ai' && s.turn !== this.me);
@@ -431,7 +437,20 @@
         button('New', { icon: 'refresh', kind: 'primary', onclick: () => this.newGame(), title: 'New game' })));
     }
 
+    /* Redraws the side panel, keeping the cursor in a text box marked with data-fk. */
     renderPanel() {
+      const a = document.activeElement;
+      const fk = a && this.panelEl.contains(a) && a.dataset && a.dataset.fk;
+      const sel = fk && typeof a.selectionStart === 'number' ? [a.selectionStart, a.selectionEnd] : null;
+      this.drawPanel();
+      if (!fk) return;
+      const b = this.panelEl.querySelector('[data-fk="' + fk + '"]');
+      if (!b) return;
+      b.focus({ preventScroll: true });
+      if (sel) try { b.setSelectionRange(sel[0], sel[1]); } catch (e) { /* not a text box */ }
+    }
+
+    drawPanel() {
       const el = GP.clear(this.panelEl), cfg = this.cfg;
       const sideOpts = cfg.sides.map((sd, i) => ({ value: i, label: sd.name, swatch: sd.color }));
 
@@ -446,7 +465,7 @@
           ? 'After your friend moves in GamePigeon, tap their move here. Your best move shows under the board.'
           : 'Practice against the computer. Wins and losses show on the home screen.'),
         h('div', { class: 'field' }, h('label', null, 'You are'),
-          segmented(sideOpts, this.me, (v) => { this.me = v; this.recorded = true; this.update(); })),
+          segmented(sideOpts, this.me, (v) => { this.me = v; this.recorded = true; if (this.idx === 0) this.reset(true); this.update(); })),
         cfg.fixedFirst ? null : h('div', { class: 'field' }, h('label', null, 'First move'),
           segmented(sideOpts, this.first, (v) => {
             this.first = v;
@@ -465,12 +484,7 @@
       if (opts.length) {
         el.appendChild(h('div', { class: 'card' }, h('h3', null, 'Board'),
           opts.map((opt) => h('div', { class: 'field' }, h('label', null, opt.label),
-            segmented(opt.choices, this.options[opt.key], (v) => {
-              // newGame's Undo restores the old setting too.
-              const before = Object.assign({}, this.options);
-              this.options[opt.key] = v;
-              this.newGameWith(before);
-            })))));
+            opt.render ? opt.render(this, (v) => this.setOption(opt.key, v)) : segmented(opt.choices, this.options[opt.key], (v) => this.setOption(opt.key, v))))));
       }
 
       // Move list

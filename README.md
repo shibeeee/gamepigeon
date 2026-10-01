@@ -23,7 +23,7 @@ installed, works offline once loaded, and saves everything automatically.
 | **Four in a Row** | An exact solver: once the position is solved, it plays perfectly and labels every column Win, Draw or Lose. An opening book covers the hardest early moves. |
 | **Reversi** | Othello AI that plays the endgame perfectly, with legal-move dots and flip previews. |
 | **Gomoku** | Finds forced wins by continuous fours and never walks into one. |
-| **Mancala Capture / Avalanche** | Deep search that follows extra turns and captures to the end, with a step-by-step move preview. |
+| **Mancala Capture / Avalanche** | Deep search that follows extra turns and captures to the end, with a step-by-step move preview. Random boards: type in the pebbles from your game. |
 | **Dots and Boxes** | Takes free boxes, avoids handing any over, and searches the endgame exactly. |
 | **Filler** | Looks about 20 turns ahead; read the board from a screenshot. |
 | **Tic Tac Toe** | Perfect play, with every square labeled Win, Draw or Lose. |

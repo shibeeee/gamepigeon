@@ -97,6 +97,12 @@ test('outcome describes a move', () => {
   ok(cap.captured && !cap.extra); eq(cap.banked, 5);
 });
 test('search prefers the extra turn', () => eq(M.search(M.initial({}), fast).move, 2));
+test('random board uses the counts you type', () => {
+  const s = M.initial({ pebbles: 'random', me: 1, start: { mine: [1, 2, 3, 4, 5, 6], theirs: null } });
+  eq(s.pits.slice(7, 13).join(), '1,2,3,4,5,6'); eq(s.pits.slice(0, 6).join(), '1,2,3,4,5,6');
+  const t = M.initial({ pebbles: 'random', me: 0, start: { mine: [9, 0, 0, 0, 0, 1], theirs: [2, 2, 2, 2, 2, 2] } });
+  eq(t.pits.slice(0, 6).join(), '9,0,0,0,0,1'); eq(t.pits.slice(7, 13).join(), '2,2,2,2,2,2');
+});
 
 console.log('Words');
 const Wd = GP.words;
