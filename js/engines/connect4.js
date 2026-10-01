@@ -135,8 +135,13 @@
         if (r) best = { move: r.move, value: r.value };
       }
       if (!best) return GP.runSearch(A, state, Object.assign({}, opts, { timeMs: Math.min(opts.timeMs || 900, 1000) }));
-      // Win / draw / loss for every column, if there's time left.
-      const cls = S.classify(b, turn, Math.max(300, budget - (Date.now() - start)));
+      // Win / draw / loss for every column, for hints. A bot move doesn't
+      // need it, and early book positions can't be graded in time anyway.
+      let cls = null;
+      if (opts.purpose !== 'play') {
+        const left = Math.max(300, budget - (Date.now() - start));
+        cls = S.classify(b, turn, best.book ? Math.min(left, 800) : left);
+      }
       const scores = {};
       if (cls) for (const c in cls) scores[c] = cls[c] > 0 ? GP.WIN / 2 : cls[c] < 0 ? -GP.WIN / 2 : 0;
       let score = best.value != null ? exactScore(best.value, moves) : cls ? scores[best.move] : 0;

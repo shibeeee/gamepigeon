@@ -32,7 +32,8 @@
       style: { left: x + '%', top: y + '%', background: HUES[(slot * 3 + k) % HUES.length] },
     }))),
     h('b', { class: 'mc-count' }, count),
-    opts.num ? h('em', { class: 'mc-num' }, opts.num) : null);
+    opts.num ? h('em', { class: 'mc-num' }, opts.num) : null,
+    opts.who ? h('em', { class: 'mc-who' }, opts.who) : null);
     return el;
   }
 
@@ -100,6 +101,7 @@
       const slot = E.STORE[side];
       return slotEl(slot, p[slot], true, {
         aria: (side === me ? 'Your' : 'Opponent') + ' store',
+        who: side === me ? 'You' : v.game.mode === 'ai' ? 'Bot' : 'Them',
         cls: ' side' + (side === me ? 'me' : 'op') + (touched.has(slot) ? ' bump' : '') + (frame && frame.cur === slot ? ' cur' : ''),
         upright,
         delay: touched.has(slot) ? touched.get(slot) * 70 : null,
@@ -140,9 +142,8 @@
         GP.button('Cancel', { kind: 'ghost', class: 'btn-sm', onclick: () => { anim = null; g.renderBoard(); } }));
     }
     host.appendChild(h('div', { class: 'mc-wrap' + (upright ? ' upright' : '') },
-      h('div', { class: 'mc-top' }, h('span', { class: 'mc-label' }, g.who(op) + ' (' + g.sideName(op) + ')'), h('span', { class: 'mc-tools' }, pv, view)),
+      h('div', { class: 'mc-top' }, pv, view),
       board,
-      h('div', { class: 'mc-label' }, g.who(me) + ' (' + g.sideName(me) + ')' + (upright ? ': your pits are on the left' : '')),
       bar));
   }
 

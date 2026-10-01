@@ -233,20 +233,30 @@
       tiles.inputs.forEach((inp) => { if (inp) { inp.parentElement.classList.remove('on-path', 'start'); inp.parentElement.removeAttribute('data-step'); } });
       if (!selected) return;
       const stage = overlay.parentElement.getBoundingClientRect();
+      let size = 0;
       const pts = selected.path.map((i, k) => {
         const inp = tiles.inputs[i], wrap = inp.parentElement;
         wrap.classList.add('on-path');
         if (k === 0) wrap.classList.add('start');
         wrap.dataset.step = k + 1;
         const r = inp.getBoundingClientRect();
+        size = r.width;
         return [r.left - stage.left + r.width / 2, r.top - stage.top + r.height / 2];
       });
       overlay.setAttribute('viewBox', `0 0 ${stage.width} ${stage.height}`);
-      const d = pts.map((p, k) => (k ? 'L' : 'M') + p[0].toFixed(1) + ' ' + p[1].toFixed(1)).join(' ');
-      overlay.appendChild(h('svg:path', { d, class: 'wh-line', pathLength: 1 }));
-      overlay.appendChild(h('svg:circle', { cx: pts[0][0], cy: pts[0][1], r: 9, class: 'wh-dot start' }));
-      const end = pts[pts.length - 1];
-      overlay.appendChild(h('svg:circle', { cx: end[0], cy: end[1], r: 6, class: 'wh-dot end' }));
+      // One short arrow between each pair of tiles, stopping short of the
+      // letters so they stay readable.
+      const trim = size * 0.34, f = (n) => n.toFixed(1);
+      overlay.appendChild(h('svg:defs', null, h('svg:marker', { id: 'wh-arrow', viewBox: '0 0 10 10', refX: 5, refY: 5, markerWidth: 3, markerHeight: 3, orient: 'auto' },
+        h('svg:path', { d: 'M0 0 L10 5 L0 10 z', class: 'wh-head' }))));
+      for (let k = 1; k < pts.length; k++) {
+        const [x1, y1] = pts[k - 1], [x2, y2] = pts[k];
+        const len = Math.hypot(x2 - x1, y2 - y1), ux = (x2 - x1) / len, uy = (y2 - y1) / len;
+        overlay.appendChild(h('svg:path', {
+          d: 'M' + f(x1 + ux * trim) + ' ' + f(y1 + uy * trim) + ' L' + f(x2 - ux * trim) + ' ' + f(y2 - uy * trim),
+          class: 'wh-line', 'marker-end': 'url(#wh-arrow)', style: { animationDelay: (k - 1) * 60 + 'ms' },
+        }));
+      }
     }
 
 

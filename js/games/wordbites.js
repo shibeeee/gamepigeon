@@ -70,7 +70,7 @@
     root.appendChild(h('div', { class: 'game-layout word' },
       h('section', { class: 'play-area' },
         h('div', { class: 'toolbar' }, GP.roundTimer('wordbites')),
-        h('div', { class: 'card' },
+        h('div', { class: 'card wb-card' },
           h('h3', null, 'Your pieces'),
           field('singles', 'Single letters', 'A E R T', 'One tile each'),
           field('horiz', 'Across pairs', 'TH IN', 'Two letters side by side'),

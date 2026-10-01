@@ -119,7 +119,9 @@
     undo() {
       if (this.idx === 0) return;
       let i = this.idx - 1;
+      // Skip past the bot's moves, or it would just play them again.
       if (this.mode === 'ai') while (i > 0 && this.history[i].turn !== this.me) i--;
+      else if (this.autoMe) while (i > 0 && this.history[i].turn === this.me && this.moves[i] !== 'edit') i--;
       this.jump(i);
     }
     redo() {
@@ -182,9 +184,21 @@
       this.animate = null;
     }
 
+    /* True when looking at an earlier position with moves after it. */
+    browsing() { return this.idx < this.history.length - 1; }
+
+    /* Drops the moves after this position so play carries on from here. */
+    playFromHere() {
+      this.history = this.history.slice(0, this.idx + 1);
+      this.moves = this.moves.slice(0, this.idx + 1);
+      this.review = null;
+      this.update();
+    }
+
     /* True when the bot should move on its own right now. */
     botTurn() {
       const s = this.state;
+      if (this.browsing()) return false; // looking back: don't overwrite the moves after this one
       if (this.mode === 'ai') return s.turn !== this.me;
       return this.autoMe && s.turn === this.me;
     }
@@ -206,13 +220,22 @@
       const s = this.state;
       this.thinking = true;
       this.renderStatus();
-      GP.ai.search(this.cfg.engine, s, 'normal', 'analyze').then((r) => {
+      GP.ai.search(this.cfg.engine, s, this.hintStrength(), 'analyze').then((r) => {
         if (token !== this.token || !r) return;
         this.thinking = false;
         this.analysis = { side: s.turn, res: r, explicit };
         if (explicit) GP.sound.play('hint');
         this.render();
       }, () => {});
+    }
+
+    /*
+     * How hard the best-move suggestion thinks. Against a friend it follows
+     * the bot level (but never plays weak on purpose); in practice it's Normal.
+     */
+    hintStrength() {
+      if (this.mode !== 'helper') return 'normal';
+      return this.strength === 'easy' ? 'quick' : this.strength;
     }
 
     finish(res) {
@@ -332,11 +355,13 @@
         if (this.cfg.resultText) text += ' ' + this.cfg.resultText(res, this);
       } else if (this.thinking && this.mode === 'ai' && s.turn !== this.me) { text = 'Computer is thinking'; cls = 'thinking'; }
       else if (this.thinking && this.botTurn()) { text = 'Bot is thinking'; cls = 'thinking'; }
+      else if (this.browsing() && (this.mode === 'ai' ? s.turn !== this.me : this.autoMe && s.turn === this.me)) { text = 'Earlier move'; cls = 'past'; }
       else if (s.turn === this.me) text = this.cfg.yourTurnText ? this.cfg.yourTurnText(this) : 'Your turn';
       else text = this.mode === 'ai' ? "Computer's turn" : 'Their turn: tap their move';
       el.className = 'status ' + cls;
       el.appendChild(this.cfg.swatch(res ? (res.winner == null ? s.turn : res.winner) : s.turn));
       el.appendChild(h('span', { class: 'status-text' }, text));
+      if (cls === 'past') el.appendChild(button('Play from here', { kind: 'primary', class: 'btn-sm', onclick: () => this.playFromHere() }));
       if (cls === 'thinking') el.appendChild(h('span', { class: 'think-dots' }, h('i'), h('i'), h('i')));
       if (!res && !this.editing && this.cfg.passMove != null) {
         const legal = this.engine.legal(s);
@@ -393,7 +418,7 @@
       if (likely.length && s.turn !== this.me) {
         slot.appendChild(h('div', { class: 'coach likely' }, GP.icon('bot'),
           h('span', { class: 'coach-text' }, h('b', null, 'Their move?'), h('small', null, 'Tap it on the board, or pick one')),
-          h('span', { class: 'likely-moves' }, likely.map((m, k) => button(this.cfg.moveLabel(m, s), {
+          h('span', { class: 'likely-moves no-swipe' }, likely.map((m, k) => button(this.cfg.moveLabel(m, s), {
             kind: k === 0 ? 'primary' : null, class: 'btn-sm', title: k === 0 ? 'Their best move' : 'Another strong move', onclick: () => this.play(m),
           })))));
         return;
@@ -473,18 +498,22 @@
           })),
         this.mode === 'helper' ? toggle('Bot moves for me', this.autoMe, (v) => { this.autoMe = v; this.update(); },
           'You only tap their moves. Copy the bot\'s moves into GamePigeon.') : null,
-        h('div', { class: 'field' }, h('label', null, this.mode === 'ai' ? 'Computer level' : 'Bot level'),
-          segmented([
+        h('div', { class: 'field' }, h('label', null, this.mode === 'ai' ? 'Computer level' : 'Bot strength'),
+          segmented(this.mode === 'ai' ? [
             { value: 'easy', label: 'Easy' }, { value: 'normal', label: 'Normal' },
             { value: 'hard', label: 'Hard' }, { value: 'max', label: 'Best' },
-          ], this.strength, (v) => { this.strength = v; this.save(); }))));
+          ] : [
+            { value: 'easy', label: 'Fast' }, { value: 'normal', label: 'Normal' },
+            { value: 'hard', label: 'Strong' }, { value: 'max', label: 'Best' },
+          ], this.strength, (v) => { this.strength = v; this.update(); })),
+        this.mode === 'helper' ? h('p', { class: 'hint-text' }, 'Stronger takes a little longer to think.') : null));
 
       // Game options
       const opts = (cfg.options || []).filter((opt) => !opt.showIf || opt.showIf(this.options));
       if (opts.length) {
         el.appendChild(h('div', { class: 'card' }, h('h3', null, 'Board'),
           opts.map((opt) => h('div', { class: 'field' }, h('label', null, opt.label),
-            opt.render ? opt.render(this, (v) => this.setOption(opt.key, v)) : segmented(opt.choices, this.options[opt.key], (v) => this.setOption(opt.key, v))))));
+            opt.render ? opt.render(this, (v) => this.setOption(opt.key, v)) : segmented(opt.choices, this.options[opt.key], (v) => this.setOption(opt.key, v), opt.choices.length > 5 ? 'seg-fill' : null)))));
       }
 
       // Move list

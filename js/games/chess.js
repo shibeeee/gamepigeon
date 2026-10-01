@@ -33,7 +33,7 @@
     const hint = v.hint && typeof v.hint.move === 'string' ? [v.hint.move.slice(0, 2), v.hint.move.slice(2, 4)] : [];
     const checkSq = g.in_check() ? findKing(board, g.turn()) : null;
 
-    const grid = h('div', { class: 'chess' + (flip ? ' flipped' : '') });
+    const grid = h('div', { class: 'chess no-swipe' + (flip ? ' flipped' : '') });
     for (let rr = 0; rr < 8; rr++) {
       for (let cc = 0; cc < 8; cc++) {
         const r = flip ? 7 - rr : rr, c = flip ? 7 - cc : cc;

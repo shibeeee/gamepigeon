@@ -212,6 +212,7 @@
     const close = () => {
       back.classList.add('out');
       document.removeEventListener('keydown', onKey);
+      window.removeEventListener('hashchange', close);
       setTimeout(() => back.remove(), 180);
     };
     const onKey = (e) => { if (e.key === 'Escape') close(); };
@@ -224,6 +225,7 @@
     const back = GP.h('div', { class: 'modal-back', onclick: (e) => { if (e.target === back) close(); } }, card);
     document.body.appendChild(back);
     document.addEventListener('keydown', onKey);
+    window.addEventListener('hashchange', close); // going to another page closes it
     const focusable = card.querySelector('footer .btn, .modal-body input, .modal-body button');
     if (focusable) setTimeout(() => focusable.focus(), 30);
     return { close, el: card };
@@ -350,7 +352,7 @@
   GP.ai = {
     /* Returns a promise for {move, score, depth, scores}. Starting a new search cancels the old one. */
     search(engine, state, strength, purpose) {
-      const opts = Object.assign({}, GP.STRENGTH[strength || GP.settings.strength] || GP.STRENGTH.normal);
+      const opts = Object.assign({ purpose: purpose || 'play' }, GP.STRENGTH[strength || GP.settings.strength] || GP.STRENGTH.normal);
       GP.ai.cancel();
       // Engines with their own worker (chess uses Stockfish).
       const eng = GP.engines[engine];
@@ -392,9 +394,14 @@
 
   /* Horizontal swipe on an element (phones): left and right callbacks. */
   GP.onSwipe = function (el, onLeft, onRight) {
-    let x0 = 0, y0 = 0, t0 = 0;
-    el.addEventListener('touchstart', (e) => { const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now(); }, { passive: true });
+    let x0 = 0, y0 = 0, t0 = 0, skip = false;
+    el.addEventListener('touchstart', (e) => {
+      const t = e.touches[0]; x0 = t.clientX; y0 = t.clientY; t0 = Date.now();
+      // Boards you drag pieces on (chess) and multi-finger touches aren't swipes.
+      skip = e.touches.length > 1 || !!(e.target.closest && e.target.closest('.no-swipe, input, textarea'));
+    }, { passive: true });
     el.addEventListener('touchend', (e) => {
+      if (skip) return;
       const t = e.changedTouches[0], dx = t.clientX - x0, dy = t.clientY - y0;
       if (Date.now() - t0 > 600 || Math.abs(dx) < 60 || Math.abs(dy) > 50) return;
       if (dx < 0) onLeft(); else if (onRight) onRight();

@@ -62,6 +62,9 @@
   function click(v, i, legal, matching, nextSquares, movable) {
     if (v.editing) { v.onEdit(i); return; }
     if (!v.canPlay) return;
+    // Tapping where a multi-jump ends plays it, if only one jump ends there.
+    const ends = picked.length && !nextSquares.has(i) ? matching.filter((x) => x.path.length > picked.length && x.path[x.path.length - 1] === i) : [];
+    if (ends.length === 1) { picked = []; v.onMove(ends[0].m); return; }
     if (picked.length && nextSquares.has(i)) {
       picked.push(i);
       const done = matching.filter((x) => picked.every((sq, k) => x.path[k] === sq));
@@ -122,7 +125,7 @@
     color: '#d84315',
     help: `<p>Move diagonally forward. Jump over a piece to take it, and keep jumping if you can. Reach the far side to get a king, which moves both ways.</p>
       <ul><li>Playing a friend? Pick <b>A friend</b>, then tap each move they make. Your best move shows under the board. Turn on <b>Bot moves for me</b> and you only tap theirs.</li>
-      <li>Tap a piece, then where it goes. For a double jump, tap each landing square.</li>
+      <li>Tap a piece, then where it goes. For a double jump, tap where it ends up (or each landing square).</li>
       <li>If your game lets you skip jumps, set <b>Jumps</b> to <b>Optional</b>.</li></ul>`,
     mount: (root) => new GP.BoardGame(root, cfg),
   });
