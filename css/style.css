@@ -85,6 +85,10 @@ body {
   line-height: 1.45;
 }
 a { color: var(--accent); }
+/* Fast repeated taps shouldn't zoom the page on phones. */
+button, a, input, label, .tile, .sb-cell, .csq, .ck-sq { touch-action: manipulation; }
+/* iPhones zoom into text boxes with text under 16px; keep them at 16px. */
+@media (pointer: coarse) { .text-input, .search, .text-input.filter { font-size: 16px; } }
 h1, h2, h3, h4 { line-height: 1.2; margin: 0; letter-spacing: -0.01em; }
 kbd {
   font-family: inherit; font-size: 0.8em; padding: 1px 6px; border-radius: 6px;
@@ -622,6 +626,7 @@ kbd {
 .flow-btns .btn-primary { font-size: 1rem; }
 
 .word-groups { display: flex; flex-direction: column; gap: 16px; }
+.word-group { content-visibility: auto; contain-intrinsic-size: auto 160px; }
 .word-group h4 { font-size: 0.78rem; font-weight: 600; color: var(--muted); display: flex; align-items: baseline; gap: 8px; margin-bottom: 7px; }
 .word-group h4 small { color: var(--faint); font-weight: 500; }
 .word-chips { display: flex; flex-wrap: wrap; gap: 5px; }

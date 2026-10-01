@@ -27,11 +27,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
       - name: Copy the site into gh-pages
         run: |
           mkdir /tmp/site
           cp -r index.html css js data icons vendor manifest.webmanifest sw.js LICENSE THIRD_PARTY.md /tmp/site/
           rm -f /tmp/site/data/c4book-*.js
+          # One script file instead of thirty: faster on phones.
+          node tools/bundle.js /tmp/site
           # Stamp this build's id on every file URL so browsers never mix versions.
           sed -i "s/__BUILD__/${GITHUB_SHA::8}/g" /tmp/site/index.html
           touch /tmp/site/.nojekyll

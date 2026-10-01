@@ -114,6 +114,8 @@
       let k = 0;
       tiles.inputs.forEach((inp) => { arr.push(inp ? (t[k++] || '') : ''); });
       tiles.setAll(arr);
+      // Every letter is in: close the phone keyboard so the words show.
+      if (t.length === count) input.blur();
     });
     return input;
   };
@@ -172,6 +174,7 @@
       used.add(key(current));
       history.push(current);
       GP.sound.play('click');
+      GP.buzz(8);
       const next = nextAfter(current);
       o.onUsed();
       set(next);
@@ -293,12 +296,19 @@
     el.appendChild(list);
     if (search.value) applyFilter();
     /* Updates crossed-off words and the shown word without redrawing (keeps the scroll). */
+    // Only chips whose state changed are touched, so a big list stays fast.
+    const chips = new Map(GP.$$('.word-chip', el).map((c) => [c.dataset.k, c]));
+    let shownUsed = new Set(used), shownSel = selected;
     el.sync = (sel) => {
       if (sel !== undefined) selected = sel;
-      GP.$$('.word-chip', el).forEach((c) => {
-        c.classList.toggle('used', used.has(c.dataset.k));
-        c.classList.toggle('on', c.dataset.k === selected);
-      });
+      for (const k of shownUsed) if (!used.has(k) && chips.has(k)) chips.get(k).classList.remove('used');
+      for (const k of used) if (!shownUsed.has(k) && chips.has(k)) chips.get(k).classList.add('used');
+      if (shownSel !== selected) {
+        if (chips.has(shownSel)) chips.get(shownSel).classList.remove('on');
+        if (chips.has(selected)) chips.get(selected).classList.add('on');
+      }
+      shownUsed = new Set(used);
+      shownSel = selected;
       countLeft();
     };
     return el;
