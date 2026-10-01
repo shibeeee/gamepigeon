@@ -134,14 +134,6 @@
       GP.sound.play('click');
       this.update();
     }
-    hint() {
-      if (this.engine.result(this.state)) return;
-      this.analyze(true);
-    }
-    aiMove() {
-      if (this.engine.result(this.state)) return;
-      this.think(true);
-    }
     /* Changes a board option. newGame's Undo restores the old setting too. */
     setOption(key, value) {
       const before = Object.assign({}, this.options);
@@ -264,11 +256,21 @@
       else if (mod) return;
       else if (e.key === 'ArrowLeft') this.undo();
       else if (e.key === 'ArrowRight') this.redo();
-      else if (e.key === 'h') this.hint();
-      else if (e.key === 'a') this.aiMove();
+      else if (e.key === 'Enter' && !e.target.closest('button')) this.playSuggested(e);
       else if (e.key === 'e') this.toggleEdit();
       else if (e.key === 'Escape' && this.editing) this.toggleEdit();
       else if (this.cfg.onKey) this.cfg.onKey(this, e);
+    }
+
+    /* Enter: play the suggested move (yours), or their most likely one. */
+    playSuggested(e) {
+      if (this.editing || this.engine.result(this.state) || !this.analysis) return;
+      const s = this.state;
+      if (this.mode === 'ai' && s.turn !== this.me) return;
+      const m = this.analysis.side === s.turn ? this.analysis.res.move : null;
+      if (m == null) return;
+      e.preventDefault();
+      this.play(m);
     }
 
     /* ---------- editing ---------- */
@@ -456,7 +458,7 @@
         });
         el.append(
           h('div', { class: 'edit-bar' }, tools, turn),
-          h('div', { class: 'btn-row' },
+          h('div', { class: 'btn-row edit-row' },
             button('Clear board', { icon: 'trash', kind: 'ghost', onclick: () => {
               const fresh = this.engine.initial(this.initOptions(this.state.turn));
               this.commitEdit(this.cfg.clearBoard ? this.cfg.clearBoard(fresh) : fresh);

@@ -681,8 +681,8 @@ kbd {
 @media (max-width: 520px) {
   .btn { padding: 8px 12px; }
   /* Board game controls: Undo, Redo and Edit shrink to icons; New keeps its word. */
-  .controls .btn-row .btn:not(.btn-primary) span:not(.ico) { display: none; }
-  .controls .btn-row .btn:not(.btn-primary) { width: 44px; padding: 0; }
+  .controls .btn-row:not(.edit-row) .btn:not(.btn-primary) span:not(.ico) { display: none; }
+  .controls .btn-row:not(.edit-row) .btn:not(.btn-primary) { width: 44px; padding: 0; }
   .card { padding: 14px; }
   .tiles { gap: 7px; }
   .wh-stage { padding: 10px; }
@@ -741,9 +741,12 @@ kbd {
 .promo-btn { aspect-ratio: 1; display: grid; place-items: center; padding: 0; border: 0; border-radius: 6px; background: #eedcbc; cursor: pointer; }
 .promo-btn:hover { background: #e0c597; }
 .promo-btn .cp { font-size: min(7vw, 40px); }
-.seg-tools .white, .seg-tools .black { font-size: 1.2rem; }
-.seg-tools .white { color: #fff; -webkit-text-stroke: 1px #1b1b1f; }
-.seg-tools .black { color: #1b1b1f; }
+/* Chess editor pieces sit on a light square so white and black both show in any theme. */
+.seg-tools button.white, .seg-tools button.black { font-size: 1.35rem; line-height: 1; padding: 5px 7px; background: #eedcbc; font-family: "DejaVu Sans", "Segoe UI Symbol", "Noto Sans Symbols 2", "Apple Symbols", sans-serif; }
+.seg-tools button.white { color: #fff; -webkit-text-stroke: 1.1px #1b1b1f; }
+.seg-tools button.black { color: #1b1b1f; -webkit-text-stroke: 0; }
+.seg-tools button.white.on, .seg-tools button.black.on { background: #f7c948; box-shadow: 0 0 0 2px var(--text); }
+.seg-tools button.white:hover, .seg-tools button.black:hover { background: #e0c597; }
 
 /* ---------- Checkers ---------- */
 .ck-wrap { width: min(100%, 520px); }
@@ -827,3 +830,10 @@ html.text-xl { font-size: 125%; }
 .contrast .btn, .contrast .seg, .contrast .card { border: 2px solid var(--border); }
 .contrast .c4 .disc, .contrast .oth .disc, .contrast .ck-piece { outline: 2px solid #000; outline-offset: -2px; }
 .contrast .tile { outline: 2px solid #4a3a14; }
+/* Chess editor: white pieces on one row, black on the next, then Erase. */
+.seg-tools:has(button.white) { display: grid; grid-template-columns: repeat(6, minmax(0, 44px)); gap: 4px; justify-content: center; }
+.seg-tools:has(button.white) button { justify-content: center; }
+.seg-tools:has(button.white) button:last-child { grid-column: 1 / -1; }
+
+.keys { list-style: none; padding: 0; margin: 4px 0; display: flex; flex-direction: column; gap: 6px; font-size: 0.86rem; color: var(--muted); }
+.keys kbd { color: var(--text); }
