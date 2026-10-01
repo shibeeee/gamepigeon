@@ -132,7 +132,7 @@
     help: `<p>Make as many words as you can from 6 or 7 letters. Longer words score more.</p>
       <ul><li>Type the letters, or tap <b>Screenshot</b>. Every word shows up right away, longest first.</li>
       <li>The numbers on your tiles show the order to tap them.</li>
-      <li>Entered it in GamePigeon? Tap <b>Done</b> and the next word shows up.</li></ul>`,
+      <li>Entered it in GamePigeon? Tap <b>Next word</b>.</li></ul>`,
     mount,
   });
 })();

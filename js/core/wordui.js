@@ -129,8 +129,8 @@
   GP.loadingCard = () => h('div', { class: 'card empty-card' }, h('div', { class: 'spinner' }), h('p', null, 'Loading the dictionary…'));
 
   /*
-   * One word at a time: Done crosses the word off and shows the next one
-   * straight away, Skip moves on without crossing off, Back undoes Done.
+   * One word at a time: Next word crosses the word off and shows the next one
+   * straight away, Skip moves on without crossing off, Back brings the last one back.
    *   list()      words in the order to play them
    *   keyOf(x)    id used in the `used` set
    *   used()      the live Set of crossed-off ids
@@ -208,13 +208,13 @@
         h('div', { class: 'btn-row flow-btns' },
           GP.button('Back', { icon: 'prev', onclick: flow.back, disabled: !history.length, title: 'Bring back the last word (Left arrow)' }),
           GP.button('Skip', { icon: 'next', kind: 'ghost', onclick: flow.skip, disabled: remaining < 2 && !isUsed, title: 'Next word without crossing this one off (Right arrow)' }),
-          GP.button(isUsed ? 'Not done' : 'Done', { icon: isUsed ? 'undo' : 'check', kind: 'primary', onclick: flow.done, title: 'Cross it off and show the next word (Enter)' })));
+          GP.button(isUsed ? 'Bring back' : 'Next word', { icon: isUsed ? 'undo' : 'next', kind: 'primary', onclick: flow.done, title: isUsed ? 'Un-cross this word' : 'Cross it off and show the next word (Enter)' })));
       GP.onSwipe(card, flow.done, flow.back);
       host.appendChild(card);
     };
     flow.onKey = (e) => {
       // Keys work anywhere except in text boxes and on other buttons (a word
-      // in the list is fine: Enter right after tapping it means Done).
+      // in the list is fine: Enter right after tapping it means Next word).
       const t = e.target;
       if (!current || t.closest('input, textarea, select') || (t.closest('button') && !t.closest('.word-chip')) || document.querySelector('.modal-back')) return;
       if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); flow.done(); }

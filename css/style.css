@@ -616,7 +616,8 @@ kbd {
 .focus-word { font-size: clamp(1.9rem, 8vw, 2.6rem); font-weight: 700; letter-spacing: 0.06em; color: var(--text); line-height: 1.1; }
 .focus-word.used { color: var(--faint); text-decoration: line-through; text-decoration-thickness: 2px; }
 .focus-meta { color: var(--muted); font-weight: 500; font-size: 0.88rem; margin: 6px 0 14px; }
-.flow-btns { display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 8px; }
+.flow-btns { display: grid; grid-template-columns: auto auto 1fr; gap: 8px; }
+.flow-btns .btn { white-space: nowrap; }
 .flow-btns .btn { min-height: 46px; }
 .flow-btns .btn-primary { font-size: 1rem; }
 

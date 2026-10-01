@@ -14,7 +14,7 @@ installed, works offline once loaded, and saves everything automatically.
 
 | Game | What the bot does |
 | --- | --- |
-| **Word Hunt** | Finds every word on 4×4, 5×5, Donut and Cross boards and draws the swipe path. Read the board from a screenshot, then tap Done after each word to get the next, in points order or a "smooth route" that keeps your finger moving. |
+| **Word Hunt** | Finds every word on 4×4, 5×5, Donut and Cross boards and draws the swipe path. Read the board from a screenshot, then tap Next word after each one, in points order or a "smooth route" that keeps your finger moving. |
 | **Anagrams** | Every word from your 6 or 7 letters, with the tiles to use highlighted. Screenshot reading too. |
 | **Word Bites** | Every word you can build from single, across and down pieces, with a diagram of how to arrange them. |
 | **Sea Battle** | Simulates thousands of possible enemy fleets to show the real chance each cell hides a ship, and the best next shot. |
@@ -48,7 +48,7 @@ installed, works offline once loaded, and saves everything automatically.
 - **Screenshot reading** for Word Hunt, Anagrams and Filler. Everything runs
   on your device; nothing is uploaded.
 - **Word games, one word at a time**: the best word shows under the board.
-  Tap **Done** once you've played it and the next one appears right away
+  Tap **Next word** once you've played it and the next one appears right away
   (Skip and Back too). Plus a search box that tells you whether any word is
   valid, one-tap copy of the word list, a single box to type all the letters
   at once, and Undo after clearing a board.

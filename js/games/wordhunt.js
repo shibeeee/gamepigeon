@@ -237,7 +237,7 @@
     help: `<p>Connect touching letters (diagonals count) to make words. Each tile once per word. Longer words score a lot more.</p>
       <ul><li>Type the letters, or tap <b>Screenshot</b> and pick a screenshot of your board.</li>
       <li>The best word shows under the board: start on the green tile and follow the arrows.</li>
-      <li>Swiped it in GamePigeon? Tap <b>Done</b> and the next word shows up. <b>Skip</b> moves on without crossing it off.</li>
+      <li>Swiped it in GamePigeon? Tap <b>Next word</b>. <b>Skip</b> moves on without crossing it off.</li>
       <li>Tap any word in the list to show it instead.</li></ul>`,
     mount,
   });

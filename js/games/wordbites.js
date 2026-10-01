@@ -166,7 +166,7 @@
     help: `<p>Pieces have one or two letters. Two-letter pieces sit side by side or stacked. Slide them together to make words.</p>
       <ul><li>Type your single letters, side-by-side pairs and stacked pairs. Put a space between pairs.</li>
       <li>The best word shows with how to line up the pieces. A faded letter sticks out of the word.</li>
-      <li>Made it in GamePigeon? Tap <b>Done</b> and the next word shows up.</li>
+      <li>Made it in GamePigeon? Tap <b>Next word</b>.</li>
       <li>Words going across can be up to 8 letters, going down up to 9.</li></ul>`,
     mount,
   });
