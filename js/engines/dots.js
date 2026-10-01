@@ -132,6 +132,28 @@
     },
   };
 
+  /*
+   * Boxes the player to move can take in a row right now (greedy). While
+   * three or more are on offer, taking one is always right: the only real
+   * decision (leaving the last two as a trap) comes at the end of a chain.
+   */
+  function takeable(ctx) {
+    const g = ctx.g, sides = ctx.sides.slice(), lines = ctx.lines.slice();
+    let n = 0, again = true;
+    while (again) {
+      again = false;
+      for (let bi = 0; bi < sides.length; bi++) {
+        if (sides[bi] !== 3) continue;
+        const x = g.boxLines[bi].find((y) => !lines[y]);
+        lines[x] = 1;
+        for (const b of g.lineBoxes[x]) sides[b]++;
+        n++;
+        again = true;
+      }
+    }
+    return n;
+  }
+
   GP.defineEngine('dots', A, {
     geometry,
     completes: (s, l) => completes(makeCtx(s), l),
@@ -151,4 +173,19 @@
       return { winner: s.score[0] === s.score[1] ? null : s.score[0] > s.score[1] ? 0 : 1, score: s.score };
     },
   });
+
+  // Take free boxes instantly while the chain is long; think at its end.
+  const fullSearch = GP.engines.dots.search;
+  GP.engines.dots.search = function (s, opts) {
+    const ctx = makeCtx(s);
+    if (takeable(ctx) >= 3) {
+      const take = A.moves(ctx, 0).filter((l) => completes(ctx, l));
+      if (take.length) {
+        const quick = fullSearch(s, Object.assign({}, opts, { timeMs: 60, noise: 0 }));
+        const move = quick && take.includes(quick.move) ? quick.move : take[0];
+        return Object.assign({}, quick, { move, quickTake: true });
+      }
+    }
+    return fullSearch(s, opts);
+  };
 })(typeof globalThis !== 'undefined' ? globalThis : self);

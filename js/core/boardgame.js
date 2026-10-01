@@ -202,7 +202,10 @@
       const started = Date.now();
       GP.ai.search(this.cfg.engine, this.state, this.strength).then((r) => {
         if (token !== this.token || !r) return;
-        const wait = Math.max(0, 350 - (Date.now() - started)); // let the last move's animation finish
+        // Let the last move's animation finish (shorter when the bot is moving again, like taking a chain).
+        const prev = this.idx > 0 ? this.history[this.idx - 1] : null;
+        const again = prev && prev.turn === this.state.turn && this.moves[this.idx] !== 'edit';
+        const wait = Math.max(0, (again ? 160 : 350) - (Date.now() - started));
         setTimeout(() => { if (token === this.token) this.play(r.move, true); }, wait);
       }, () => this.searchFailed(token));
     }
